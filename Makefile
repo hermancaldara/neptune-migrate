@@ -1,23 +1,35 @@
-# Makefile for simple-virtuoso-migrate
+.SILENT:
 
+.DEFAULT_GOAL = help
+
+COLOR_RESET = \033[0m
+COLOR_GREEN = \033[32m
+COLOR_YELLOW = \033[33m
+
+PROJECT_NAME = `basename $(PWD)`
+
+## prints this help
 help:
-	@echo
-	@echo "Please use 'make <target>' where <target> is one of"
-	@echo "  clean      to clean garbage left by builds and installation"
-	@echo "  compile    to compile .py files (just to check for syntax errors)"
-	@echo "  test       to execute all simple-virtuoso-migrate tests"
-	@echo "  install    to install simple-virtuoso-migrate"
-	@echo "  build      to build without installing simple-virtuoso-migrate"
-	@echo "  dist       to create egg for distribution"
-	@echo "  publish    to publish the package to PyPI"
-	@echo
+	printf "\n${COLOR_YELLOW}${PROJECT_NAME}${COLOR_RESET}\n\n"
+	awk '/^[a-zA-Z0-9.%_-]+:/ { \
+		helpMessage = match(lastLine, /^## (.+)/); \
+		if (helpMessage) { \
+			helpCommand = substr($$1, 0, index($$1, ":")); \
+			helpMessage = substr(lastLine, RSTART + 3, RLENGTH); \
+			printf "${COLOR_GREEN}$$ make %s${COLOR_RESET} %s\n", helpCommand, helpMessage; \
+		} \
+	} \
+	{ lastLine = $$0 }' $(MAKEFILE_LIST)
+	printf "\n"
 
+## cleans garbage left by builds and installation
 clean:
 	@echo "Cleaning..."
 	@rm -rf build dist simple_virtuoso_migrate.egg-info *.pyc **/*.pyc *~
 	@#removing test temp files
 	@rm -rf `date +%Y`*
 
+## compiles .py files (just to check for syntax errors)
 compile: clean
 	@echo "Compiling source code..."
 	@rm -rf simple_virtuoso_migrate/*.pyc
@@ -25,21 +37,26 @@ compile: clean
 	@python -tt -m compileall simple_virtuoso_migrate
 	@python -tt -m compileall tests
 
+## executes all simple-virtuoso-migrate tests
 test: compile
 	@make clean
 	@echo "Starting tests..."
 	@nosetests -s --verbose --with-coverage --cover-erase --cover-package=simple_virtuoso_migrate tests
 	@make clean
 
+## install simple-virtuoso-migrate
 install:
 	@/usr/bin/env python ./setup.py install
 	@pip install -r requirements_test.txt
 
+## builds without installing simple-virtuoso-migrate
 build:
 	@/usr/bin/env python ./setup.py build
 
+## creates egg for distribution
 dist: clean
 	@python setup.py sdist
 
+## publishs the package to PyPI
 publish: dist
 	@python setup.py sdist upload
