@@ -174,4 +174,4 @@ class CLI(object):
 
     @classmethod
     def msg(cls, msg, color="CYAN"):
-        print "%s%s%s" % (cls.color[color], msg, cls.color["END"])
+        print("%s%s%s" % (cls.color[color], msg, cls.color["END"]))

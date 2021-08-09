@@ -66,7 +66,7 @@ class ConfigTest(unittest.TestCase):
         _dict = {"some_key": "some_value"}
         try:
             Config._get(_dict, "ANOTHER_KEY")
-        except Exception, e:
+        except Exception as e:
             self.assertEqual("invalid key ('ANOTHER_KEY')", str(e))
 
     def test_it_should_accept_non_empty_stringand_false_as_default_value(self):
@@ -86,7 +86,7 @@ class ConfigTest(unittest.TestCase):
         config.put("some_key", "some_value")
         try:
             config.put("some_key", "another_value")
-        except Exception, e:
+        except Exception as e:
             self.assertEqual("the configuration key 'some_key' already exists and you cannot override any configuration", str(e))
 
     def test_it_should_remove_saved_config_values(self):
@@ -101,7 +101,7 @@ class ConfigTest(unittest.TestCase):
         config.put("some_key", "some_value")
         try:
             config.remove("ANOTHER_KEY")
-        except Exception, e:
+        except Exception as e:
             self.assertEqual("invalid configuration key ('another_key')", str(e))
 
     def test_it_should_return_previous_saved_config_values(self):
@@ -123,7 +123,7 @@ class ConfigTest(unittest.TestCase):
         config.put("some_key", "some_value")
         try:
             config.get("ANOTHER_KEY")
-        except Exception, e:
+        except Exception as e:
             self.assertEqual("invalid key ('another_key')", str(e))
 
     def test_it_should_accept_non_empty_string_and_false_as_default_value(self):
@@ -195,20 +195,20 @@ RUN_AFTER_PARAMS = {'key': 'value'}
     def test_it_should_read_config_file(self):
         config_path = os.path.abspath('sample.conf')
         config = FileConfig(config_path)
-        self.assertEquals(config.get('database_host'), 'localhost')
-        self.assertEquals(config.get('database_user'), 'root')
-        self.assertEquals(config.get('database_password'), '')
-        self.assertEquals(config.get('database_name'), 'migration_example')
-        self.assertEquals(config.get("database_migrations_dir"), [os.path.abspath('example')])
-        self.assertEquals(config.get('utc_timestamp'), True)
-        self.assertEquals(config.get('run_after'), './some_dummy_action.py')
-        self.assertEquals(config.get('run_after_params')['key'], 'value')
+        self.assertEqual(config.get('database_host'), 'localhost')
+        self.assertEqual(config.get('database_user'), 'root')
+        self.assertEqual(config.get('database_password'), '')
+        self.assertEqual(config.get('database_name'), 'migration_example')
+        self.assertEqual(config.get("database_migrations_dir"), [os.path.abspath('example')])
+        self.assertEqual(config.get('utc_timestamp'), True)
+        self.assertEqual(config.get('run_after'), './some_dummy_action.py')
+        self.assertEqual(config.get('run_after_params')['key'], 'value')
 
     def test_it_should_use_configuration_by_environment(self):
         config_path = os.path.abspath('sample.conf')
         config = FileConfig(config_path, "env1")
-        self.assertEquals('migration_example_env1', config.get('database_name'))
-        self.assertEquals('root', config.get('database_user'))
+        self.assertEqual('migration_example_env1', config.get('database_name'))
+        self.assertEqual('root', config.get('database_user'))
 
     def test_it_should_stop_execution_when_an_invalid_key_is_requested(self):
         config_path = os.path.abspath('sample.conf')
@@ -216,7 +216,7 @@ RUN_AFTER_PARAMS = {'key': 'value'}
         try:
             config.get('invalid_config')
             self.fail('it should not pass here')
-        except Exception, e:
+        except Exception as e:
             self.assertEqual("invalid key ('invalid_config')", str(e))
 
     def test_it_should_get_any_database_custom_variable(self):

@@ -1,4 +1,4 @@
-from StringIO import StringIO
+from io import StringIO
 from mock import patch
 from simple_virtuoso_migrate.cli import CLI
 import unittest
@@ -35,7 +35,7 @@ class CLITest(unittest.TestCase):
     def test_it_should_exit_with_help_options(self, stdout_mock):
         try:
             CLI.parse(["-h"])
-        except SystemExit, e:
+        except SystemExit as e:
             self.assertEqual(0, e.code)
             self.assertTrue(stdout_mock.getvalue().find(
                     "Displays simple-virtuoso-migrate's version and exit") > 0)
@@ -43,7 +43,7 @@ class CLITest(unittest.TestCase):
         stdout_mock.buf = ''
         try:
             CLI.parse(["--help"])
-        except SystemExit, e:
+        except SystemExit as e:
             self.assertEqual(0, e.code)
             self.assertTrue(stdout_mock.getvalue().find(
                     "Displays simple-virtuoso-migrate's version and exit") > 0)

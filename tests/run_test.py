@@ -2,10 +2,11 @@ import unittest
 import simple_virtuoso_migrate
 import os
 import sys
-from StringIO import StringIO
+from io import StringIO
 from mock import patch, Mock
 from tests import create_file, delete_files
 from simple_virtuoso_migrate import run
+import importlib
 
 
 class RunTest(unittest.TestCase):
@@ -40,7 +41,7 @@ RUN_AFTER = './some_dummy_action.py'
         new_stdout = Mock()
         codecs_mock.return_value = Mock(**{'return_value': new_stdout})
 
-        reload(simple_virtuoso_migrate.run)
+        importlib.reload(simple_virtuoso_migrate.run)
 
         codecs_mock.assert_called_with('utf-8')
         self.assertEqual(new_stdout, sys.stdout)
@@ -81,7 +82,7 @@ RUN_AFTER = './some_dummy_action.py'
                                                                 stdout_mock):
         try:
             run.run_from_argv(["-v"])
-        except SystemExit, e:
+        except SystemExit as e:
             self.assertEqual(0, e.code)
         compiled = ('simple-virtuoso-migrate v%s\n\n' %\
                     simple_virtuoso_migrate.SIMPLE_VIRTUOSO_MIGRATE_VERSION)
@@ -104,7 +105,7 @@ RUN_AFTER = './some_dummy_action.py'
         show_colors_mock.side_effect = KeyboardInterrupt()
         try:
             run.run_from_argv(["--color"])
-        except SystemExit, e:
+        except SystemExit as e:
             self.assertEqual(0, e.code)
 
         self.assertEqual('\nExecution interrupted by user...\n\n', stdout_mock.getvalue())
@@ -115,7 +116,7 @@ RUN_AFTER = './some_dummy_action.py'
         show_colors_mock.side_effect = Exception('occur an error')
         try:
             run.run_from_argv(["--color"])
-        except SystemExit, e:
+        except SystemExit as e:
             self.assertEqual(1, e.code)
 
         self.assertEqual('[ERROR] occur an error\n\n', stdout_mock.getvalue())

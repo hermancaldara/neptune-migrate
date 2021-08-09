@@ -41,7 +41,7 @@ compile: clean
 test: compile
 	@make clean
 	@echo "Starting tests..."
-	@nosetests -s --verbose --with-coverage --cover-erase --cover-package=simple_virtuoso_migrate tests
+	@pytest .
 	@make clean
 
 ## install simple-virtuoso-migrate

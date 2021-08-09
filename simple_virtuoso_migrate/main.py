@@ -1,10 +1,10 @@
 import os
 import sys
-from cli import CLI
-from log import LOG
-from core import SimpleVirtuosoMigrate
-from virtuoso import Virtuoso
-from config import Config
+from .cli import CLI
+from .log import LOG
+from .core import SimpleVirtuosoMigrate
+from .virtuoso import Virtuoso
+from .config import Config
 
 
 class Main(object):
@@ -13,7 +13,7 @@ class Main(object):
     def __init__(self, config):
 
         if not Main._valid_version():
-            print "You need to upgrade your Python version from %s to 2.7.x" % sys.version
+            print("You need to upgrade your Python version from %s to 3.7.x" % sys.version)
             sys.exit(0)
 
         Main._check_configuration(config)
@@ -24,7 +24,7 @@ class Main(object):
 
     @staticmethod
     def _valid_version():
-        return sys.version_info[0] == 2 and sys.version_info[1] >= 7
+        return sys.version_info[0] == 3 and sys.version_info[1] >= 7
 
     def execute(self):
         """ evaluate what action to take from command line options """
@@ -80,7 +80,7 @@ class Main(object):
 
         if not self.config.get("show_sparql_only", False):
             response_dict = self.virtuoso.upload_ttls_to_virtuoso(files)
-            for filename, (out, err) in response_dict.items():
+            for filename, (out, err) in list(response_dict.items()):
                 if err:
                     err_list.append("File %s with err %s" % (filename, err))
                 else:

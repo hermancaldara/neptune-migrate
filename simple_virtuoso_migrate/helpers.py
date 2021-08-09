@@ -20,7 +20,7 @@ class Utils(object):
             fh.write(content)
             fh.close()
             return f.name
-        except IOError, e:
+        except IOError as e:
             raise Exception("could not create temporary file for %s -> (%s)" %
                                                         (content_reference, e))
 
@@ -36,10 +36,10 @@ class Utils(object):
             # add settings dir from path
             sys.path.insert(0, path)
 
-            execfile(full_filename, global_dict, local_dict)
+            exec(compile(open(full_filename, "rb").read(), full_filename, 'exec'), global_dict, local_dict)
         except IOError:
             raise Exception("%s: file not found" % full_filename)
-        except Exception, e:
+        except Exception as e:
             try:
                 f = open(full_filename, "rU")
                 content = f.read()
@@ -51,8 +51,8 @@ class Utils(object):
                 f.write('#-*- coding:%s -*-\n%s' % (file_encoding, content))
                 f.close()
 
-                execfile(temp_abspath, global_dict, local_dict)
-            except Exception, e:
+                exec(compile(open(temp_abspath, "rb").read(), temp_abspath, 'exec'), global_dict, local_dict)
+            except Exception as e:
                 raise Exception("error interpreting config file '%s': %s" %
                                                             (filename, str(e)))
         finally:

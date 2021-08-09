@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from core.exceptions import MigrationException
+from .core.exceptions import MigrationException
 from git import Git
-from helpers import Utils
+from .helpers import Utils
 from rdflib.graph import ConjunctiveGraph, Graph
 from rdflib.plugins.parsers.notation3 import BadSyntax
 import datetime
@@ -10,7 +10,7 @@ import logging
 import os
 import rdflib
 import shutil
-import ssh
+from . import ssh
 import subprocess
 
 logging.basicConfig()
@@ -175,7 +175,7 @@ ORDER BY desc(?data) LIMIT 1
         nroResults = len(res)
         if nroResults > 0:
             res.vars = ['version', 'origen']
-            versao, origem = iter(res).next()
+            versao, origem = next(iter(res))
             versao = None if str(versao) == 'None' else str(versao)
             return  versao, str(origem)
         else:
@@ -226,14 +226,14 @@ ORDER BY desc(?data) LIMIT 1
 
                 if not blank_node_existing_triples or blank_node_triples_changed:
                     forward_migration = forward_migration + \
-                        u"\nSPARQL INSERT INTO <%s> { %s[%s] };" % (
+                        "\nSPARQL INSERT INTO <%s> { %s[%s] };" % (
                                                             self.__virtuoso_graph,
                                                             blank_node_as_an_object,
                                                             blank_node_as_a_subject)
                     blank_node_as_a_subject = blank_node_as_a_subject[:-2]
 
                     backward_migration = backward_migration + \
-                    (u"\nSPARQL DELETE FROM <%s> { %s ?s. ?s %s } WHERE "
+                    ("\nSPARQL DELETE FROM <%s> { %s ?s. ?s %s } WHERE "
                     "{ %s ?s. ?s %s };") % (self.__virtuoso_graph, blank_node_as_an_object,
                                            blank_node_as_a_subject,
                                            blank_node_as_an_object,
@@ -242,11 +242,11 @@ ORDER BY desc(?data) LIMIT 1
            if isinstance(subject, rdflib.term.URIRef) and \
                     not isinstance(object_, rdflib.term.BNode):
                 forward_migration = forward_migration + \
-                                u"\nSPARQL INSERT INTO <%s> {%s %s %s . };"\
+                                "\nSPARQL INSERT INTO <%s> {%s %s %s . };"\
                                 % (self.__virtuoso_graph, subject.n3(), predicate.n3(),
                                    object_.n3())
                 backward_migration = backward_migration + \
-                    u"\nSPARQL DELETE FROM <%s> {%s %s %s . };" % (self.__virtuoso_graph,
+                    "\nSPARQL DELETE FROM <%s> {%s %s %s . };" % (self.__virtuoso_graph,
                                                             subject.n3(),
                                                             predicate.n3(),
                                                             Utils.get_normalized_n3(object_))
@@ -270,9 +270,9 @@ ORDER BY desc(?data) LIMIT 1
                     current_graph.parse(data=current_ontology, format='turtle')
                 destination_graph.parse(data=destination_ontology,
                                         format='turtle')
-            except BadSyntax, e:
+            except BadSyntax as e:
                 e._str = e._str.decode('utf-8')
-                raise MigrationException("Error parsing graph %s" % unicode(e))
+                raise MigrationException("Error parsing graph %s" % str(e))
 
             forward_insert, backward_delete = (
                             self._generate_migration_sparql_commands(
@@ -302,7 +302,7 @@ ORDER BY desc(?data) LIMIT 1
             'query_down': query_down.replace('"', '\\"').replace('\n', '\\n')
         }
         if insert is not None:
-            query_up += (u'\nSPARQL INSERT INTO <%(m_graph)s> { '
+            query_up += ('\nSPARQL INSERT INTO <%(m_graph)s> { '
                     '[] owl:versionInfo "%(c_version)s"; '
                     '<%(m_graph)sendpoint> "%(endpoint)s"; '
                     '<%(m_graph)susuario> "%(user)s"; '
@@ -311,7 +311,7 @@ ORDER BY desc(?data) LIMIT 1
                     '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
                     '<%(m_graph)sorigen> "%(origen)s"; '
                     '<%(m_graph)sinserted> "%(insert)s".};') % values
-            query_down += (u'\nSPARQL DELETE FROM <%(m_graph)s> {?s ?p ?o} '
+            query_down += ('\nSPARQL DELETE FROM <%(m_graph)s> {?s ?p ?o} '
                     'WHERE {?s owl:versionInfo "%(c_version)s"; '
                     '<%(m_graph)sendpoint> "%(endpoint)s"; '
                     '<%(m_graph)susuario> "%(user)s"; '
@@ -321,7 +321,7 @@ ORDER BY desc(?data) LIMIT 1
                     '<%(m_graph)sorigen> "%(origen)s"; '
                     '<%(m_graph)sinserted> "%(insert)s"; ?p ?o.};') % values
         else:
-            query_up += (u'\nSPARQL INSERT INTO <%(m_graph)s> { '
+            query_up += ('\nSPARQL INSERT INTO <%(m_graph)s> { '
                     '[] owl:versionInfo "%(d_version)s"; '
                     '<%(m_graph)sendpoint> "%(endpoint)s"; '
                     '<%(m_graph)susuario> "%(user)s"; '
@@ -330,7 +330,7 @@ ORDER BY desc(?data) LIMIT 1
                     '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
                     '<%(m_graph)sorigen> "%(origen)s"; '
                     '<%(m_graph)schanges> "%(query_up)s".};') % values
-            query_down += (u'\nSPARQL DELETE FROM <%(m_graph)s> {?s ?p ?o} '
+            query_down += ('\nSPARQL DELETE FROM <%(m_graph)s> {?s ?p ?o} '
                     'WHERE {?s owl:versionInfo "%(d_version)s"; '
                     '<%(m_graph)sendpoint> "%(endpoint)s"; '
                     '<%(m_graph)susuario> "%(user)s"; '

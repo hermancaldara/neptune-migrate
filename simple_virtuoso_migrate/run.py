@@ -1,8 +1,8 @@
-from cli import CLI
-from config import FileConfig, Config
+from .cli import CLI
+from .config import FileConfig, Config
 from getpass import getpass
-from main import Main
-from version import SIMPLE_VIRTUOSO_MIGRATE_VERSION
+from .main import Main
+from .version import SIMPLE_VIRTUOSO_MIGRATE_VERSION
 import codecs
 import sys
 
@@ -93,8 +93,8 @@ def run(options):
         Main(config).execute()
     except KeyboardInterrupt:
         CLI.info_and_exit("\nExecution interrupted by user...")
-    except Exception, e:
-        CLI.error_and_exit(unicode(e))
+    except Exception as e:
+        CLI.error_and_exit(str(e))
 
 if __name__ == '__main__':
     "Begin of execution"

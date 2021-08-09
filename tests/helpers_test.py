@@ -68,14 +68,14 @@ DATABASE_OTHER_CUSTOM_VARIABLE = 'Value'
         try:
             Utils.get_variables_from_file(os.path.abspath('sample.py'))
             self.fail("it should not get here")
-        except Exception, e:
-            self.assertEqual("error interpreting config file 'sample.py': No module named some_not_imported_module", str(e))
+        except Exception as e:
+            self.assertEqual("error interpreting config file 'sample.py': No module named 'some_not_imported_module'", str(e))
 
     def test_it_should_raise_exception_config_file_not_exists(self):
         try:
             Utils.get_variables_from_file(os.path.abspath('unexistent.conf'))
             self.fail("it should not get here")
-        except Exception, e:
+        except Exception as e:
             self.assertEqual("%s: file not found" % os.path.abspath('unexistent.conf'), str(e))
 
     def test_it_should_delete_compiled_module_file(self):
@@ -95,7 +95,7 @@ DATABASE_OTHER_CUSTOM_VARIABLE = 'Value'
     def test_it_should_support_utf8_content_on_temporary_file(self):
         filename = None
         try:
-            filename = Utils.write_temporary_file('content çáéíóú'.decode('utf-8'), 'content_reference')
+            filename = Utils.write_temporary_file('content çáéíóú', 'content_reference')
             self.assertEqual(open(filename, "r").read(), 'content çáéíóú')
         finally:
             if filename and os.path.exists(filename):
@@ -106,7 +106,7 @@ DATABASE_OTHER_CUSTOM_VARIABLE = 'Value'
         try:
             Utils.write_temporary_file('content', 'content_reference')
             self.fail("it should not get here")
-        except Exception, e:
+        except Exception as e:
             self.assertEqual('could not create temporary file for content_reference -> (some error)', str(e))
 
     def test_normalize_non_negative_integer(self):

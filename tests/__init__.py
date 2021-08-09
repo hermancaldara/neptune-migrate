@@ -3,7 +3,7 @@ import os
 import unittest
 import codecs
 from simple_virtuoso_migrate.config import FileConfig
-from StringIO import StringIO
+from io import StringIO
 from mock import patch
 
 
@@ -62,7 +62,7 @@ class BaseTest(unittest.TestCase):
         raisedMessage = ''
         try:
             callableObj(*args, **kwargs)
-        except excClass, e:
+        except excClass as e:
             raisedMessage = str(e)
             if excMessage == raisedMessage:
                 return
@@ -71,8 +71,4 @@ class BaseTest(unittest.TestCase):
             excName = excClass.__name__
         else:
             excName = str(excClass)
-        raise (self.failureException,
-              "%s not raised with message '%s', the message was '%s'" %\
-                                                                (excName,
-                                                                excMessage,
-                                                                raisedMessage))
+        raise self.failureException("%s not raised with message '%s', the message was '%s'" % (excName, excMessage, raisedMessage))

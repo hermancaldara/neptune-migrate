@@ -32,8 +32,8 @@ class LogTest(BaseTest):
         LOG('log_dir_test/path/subpath')
         expected_calls = [
             call('log_dir_test/path/subpath'),
-            call('log_dir_test/path', 511),
-            call('log_dir_test', 511)
+            call('log_dir_test/path', exist_ok=False),
+            call('log_dir_test', exist_ok=False)
         ]
         self.assertEqual(expected_calls, makedirs_mock.mock_calls)
 

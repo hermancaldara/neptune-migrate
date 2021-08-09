@@ -1,12 +1,12 @@
 import os
-from helpers import Utils
+from .helpers import Utils
 
 
 class Config(object):
 
     def __init__(self, inital_config=None):
         self._config = inital_config or {}
-        for key in self._config.keys():
+        for key in list(self._config.keys()):
             self._config[key.lower()] = self._config[key]
 
     def __repr__(self):
@@ -81,7 +81,7 @@ class FileConfig(Config):
 
         if environment:
             prefix = environment + "_"
-            for key in self._config.keys():
+            for key in list(self._config.keys()):
                 if key.startswith(prefix):
                     self.update(key[len(prefix):], self.get(key))
 
