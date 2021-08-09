@@ -3,7 +3,7 @@ import os
 import logging
 from datetime import datetime
 from mock import patch, call, Mock
-from simple_virtuoso_migrate.log import LOG
+from neptune_migrate.log import LOG
 from tests import BaseTest, delete_files
 
 class LogTest(BaseTest):

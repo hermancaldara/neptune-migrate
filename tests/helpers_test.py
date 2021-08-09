@@ -4,7 +4,7 @@ import os
 import sys
 from mock import patch
 from tests import create_file, delete_files
-from simple_virtuoso_migrate.helpers import Utils
+from neptune_migrate.helpers import Utils
 
 from rdflib import Literal
 
@@ -101,7 +101,7 @@ DATABASE_OTHER_CUSTOM_VARIABLE = 'Value'
             if filename and os.path.exists(filename):
                 os.unlink(filename)
 
-    @patch('simple_virtuoso_migrate.helpers.tempfile.NamedTemporaryFile', side_effect=IOError("some error"))
+    @patch('neptune_migrate.helpers.tempfile.NamedTemporaryFile', side_effect=IOError("some error"))
     def test_it_should_raise_exception_when_an_error_happens_on_writing_temporary_file(self, named_temporary_file_mock):
         try:
             Utils.write_temporary_file('content', 'content_reference')

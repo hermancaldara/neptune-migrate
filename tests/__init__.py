@@ -2,7 +2,7 @@ import glob
 import os
 import unittest
 import codecs
-from simple_virtuoso_migrate.config import FileConfig
+from neptune_migrate.config import FileConfig
 from io import StringIO
 from mock import patch
 

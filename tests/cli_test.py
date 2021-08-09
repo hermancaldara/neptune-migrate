@@ -1,6 +1,6 @@
 from io import StringIO
 from mock import patch
-from simple_virtuoso_migrate.cli import CLI
+from neptune_migrate.cli import CLI
 import unittest
 
 
@@ -191,7 +191,7 @@ class CLITest(unittest.TestCase):
         CLI.msg("message to print", "RED")
         self.assertEqual("\x1b[31mmessage to print\x1b[0m\n", stdout_mock.getvalue())
 
-    @patch('simple_virtuoso_migrate.cli.CLI.msg')
+    @patch('neptune_migrate.cli.CLI.msg')
     def test_it_should_show_error_message_and_exit(self, msg_mock):
         try:
             CLI.error_and_exit("error test message, dont mind about it :)")
@@ -200,7 +200,7 @@ class CLITest(unittest.TestCase):
             pass
         msg_mock.assert_called_with("[ERROR] error test message, dont mind about it :)\n", "RED")
 
-    @patch('simple_virtuoso_migrate.cli.CLI.msg')
+    @patch('neptune_migrate.cli.CLI.msg')
     def test_it_should_show_info_message_and_exit(self, msg_mock):
         try:
             CLI.info_and_exit("info test message, dont mind about it :)")

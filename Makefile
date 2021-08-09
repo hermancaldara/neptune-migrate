@@ -25,16 +25,16 @@ help:
 ## cleans garbage left by builds and installation
 clean:
 	@echo "Cleaning..."
-	@rm -rf build dist simple_virtuoso_migrate.egg-info *.pyc **/*.pyc *~
+	@rm -rf build dist neptune_migrate.egg-info *.pyc **/*.pyc *~
 	@#removing test temp files
 	@rm -rf `date +%Y`*
 
 ## compiles .py files (just to check for syntax errors)
 compile: clean
 	@echo "Compiling source code..."
-	@rm -rf simple_virtuoso_migrate/*.pyc
+	@rm -rf neptune_migrate/*.pyc
 	@rm -rf tests/*.pyc
-	@python -tt -m compileall simple_virtuoso_migrate
+	@python -tt -m compileall neptune_migrate
 	@python -tt -m compileall tests
 
 ## executes all simple-virtuoso-migrate tests

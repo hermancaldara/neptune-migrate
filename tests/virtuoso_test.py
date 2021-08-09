@@ -7,9 +7,9 @@ import re
 from mock import patch, Mock, call, MagicMock
 from rdflib.graph import ConjunctiveGraph
 
-from simple_virtuoso_migrate.config import Config
-from simple_virtuoso_migrate.main import Virtuoso
-from simple_virtuoso_migrate.core.exceptions import MigrationException
+from neptune_migrate.config import Config
+from neptune_migrate.main import Virtuoso
+from neptune_migrate.core.exceptions import MigrationException
 from tests import create_file, delete_files, BaseTest
 
 
@@ -169,22 +169,22 @@ class VirtuosoTest(BaseTest):
         virtuoso._run_isql("big_file.ttl", True)
         popen_mock.assert_called_with('isql -U user -P password -H localhost -S 9999 -b 4800 < "big_file.ttl"', shell=True, stderr=-1, stdout=-1)
 
-#    @patch('simple_virtuoso_migrate.virtuoso.Virtuoso.command_call',
+#    @patch('neptune_migrate.virtuoso.Virtuoso.command_call',
 #           return_value=('', 'some error'))
 #    def test_it_should_raise_error_if_isql_status_return_error(self, command_call_mock):
 #        virtuoso = Virtuoso(self.config)
 #        self.assertRaisesWithMessage(Exception, 'could not connect to virtuoso: some error', virtuoso.connect)
 
-    @patch('simple_virtuoso_migrate.virtuoso.Utils.write_temporary_file', return_value='filename.ttl')
-    @patch('simple_virtuoso_migrate.virtuoso.Virtuoso._run_isql', return_value=('', ''))
+    @patch('neptune_migrate.virtuoso.Utils.write_temporary_file', return_value='filename.ttl')
+    @patch('neptune_migrate.virtuoso.Virtuoso._run_isql', return_value=('', ''))
     def test_it_should_write_a_file_with_sparql_up_when_executing_change(self, run_isql_mock, write_temporary_file_mock):
         virtuoso = Virtuoso(self.config)
         virtuoso.execute_change("sparql_up", "sparql_down")
         write_temporary_file_mock.assert_called_with("set echo on;\nsparql_up", "file_up")
         run_isql_mock.assert_called_with('filename.ttl', True)
 
-    @patch('simple_virtuoso_migrate.virtuoso.Utils.write_temporary_file', return_value='filename.ttl')
-    @patch('simple_virtuoso_migrate.virtuoso.Virtuoso._run_isql', return_value=('', ''))
+    @patch('neptune_migrate.virtuoso.Utils.write_temporary_file', return_value='filename.ttl')
+    @patch('neptune_migrate.virtuoso.Virtuoso._run_isql', return_value=('', ''))
     def test_it_should_delete_the_temporary_file_with_sparql_up_when_executing_change(self, run_isql_mock, write_temporary_file_mock):
         create_file('filename.ttl', 'content')
 
@@ -192,8 +192,8 @@ class VirtuosoTest(BaseTest):
         virtuoso.execute_change("sparql_up", "sparql_down")
         self.assertFalse(os.path.exists('filename.ttl'))
 
-    @patch('simple_virtuoso_migrate.virtuoso.Utils.write_temporary_file', return_value='filename.ttl')
-    @patch('simple_virtuoso_migrate.virtuoso.Virtuoso._run_isql', side_effect=Exception("some error"))
+    @patch('neptune_migrate.virtuoso.Utils.write_temporary_file', return_value='filename.ttl')
+    @patch('neptune_migrate.virtuoso.Virtuoso._run_isql', side_effect=Exception("some error"))
     def test_it_should_delete_the_temporary_file_with_sparql_up_when_executing_change_raise_an_error(self, run_isql_mock, write_temporary_file_mock):
         create_file('filename.ttl', 'content')
 
@@ -201,8 +201,8 @@ class VirtuosoTest(BaseTest):
         self.assertRaisesWithMessage(Exception, 'some error', virtuoso.execute_change, "sparql_up", "sparql_down")
         self.assertFalse(os.path.exists('filename.ttl'))
 
-    @patch('simple_virtuoso_migrate.virtuoso.Utils.write_temporary_file')
-    @patch('simple_virtuoso_migrate.virtuoso.Virtuoso._run_isql')
+    @patch('neptune_migrate.virtuoso.Utils.write_temporary_file')
+    @patch('neptune_migrate.virtuoso.Virtuoso._run_isql')
     def test_it_should_write_a_file_with_sparql_down_when_executing_change_raise_an_error(self, run_isql_mock, write_temporary_file_mock):
         run_isql_mock.side_effect = command_call_side_effect
         write_temporary_file_mock.side_effect = temp_file_side_effect
@@ -221,8 +221,8 @@ class VirtuosoTest(BaseTest):
         ]
         self.assertEqual(expected_calls, run_isql_mock.mock_calls)
 
-    @patch('simple_virtuoso_migrate.virtuoso.Utils.write_temporary_file')
-    @patch('simple_virtuoso_migrate.virtuoso.Virtuoso._run_isql')
+    @patch('neptune_migrate.virtuoso.Utils.write_temporary_file')
+    @patch('neptune_migrate.virtuoso.Virtuoso._run_isql')
     def test_it_should_delete_the_temporary_file_with_sparql_down_when_executing_change(self, run_isql_mock, write_temporary_file_mock):
         create_file('filename_down.ttl', 'content')
         run_isql_mock.side_effect = command_call_side_effect
@@ -232,8 +232,8 @@ class VirtuosoTest(BaseTest):
         self.assertRaisesWithMessage(MigrationException, '\nerror executing migration statement: err\n\nRollback done successfully!!!', virtuoso.execute_change, "sparql_up", "sparql_down")
         self.assertFalse(os.path.exists('filename_down.ttl'))
 
-    @patch('simple_virtuoso_migrate.virtuoso.Utils.write_temporary_file')
-    @patch('simple_virtuoso_migrate.virtuoso.Virtuoso._run_isql')
+    @patch('neptune_migrate.virtuoso.Utils.write_temporary_file')
+    @patch('neptune_migrate.virtuoso.Virtuoso._run_isql')
     def test_it_should_raise_a_specific_message_when_rollback_fails_when_executing_change(self, run_isql_mock, write_temporary_file_mock):
         def command_call_side_effect(*args):
             if (args[0].find("_up") > 0) or (args[0].find("_down") > 0):
@@ -246,16 +246,16 @@ class VirtuosoTest(BaseTest):
         virtuoso = Virtuoso(self.config)
         self.assertRaisesWithMessage(MigrationException, '\nerror executing migration statement: err\n\nRollback done partially: error executing rollback statement: err', virtuoso.execute_change, "sparql_up", "sparql_down")
 
-    @patch('simple_virtuoso_migrate.virtuoso.Utils.write_temporary_file', return_value='filename.ttl')
-    @patch('simple_virtuoso_migrate.virtuoso.Virtuoso._run_isql', return_value=('output', ''))
+    @patch('neptune_migrate.virtuoso.Utils.write_temporary_file', return_value='filename.ttl')
+    @patch('neptune_migrate.virtuoso.Virtuoso._run_isql', return_value=('output', ''))
     def test_it_should_log_stdout_when_executing_change(self, run_isql_mock, write_temporary_file_mock):
         execution_log = Mock()
         virtuoso = Virtuoso(self.config)
         virtuoso.execute_change("sparql_up", "sparql_down", execution_log)
         execution_log.assert_called_with("output")
 
-    @patch('simple_virtuoso_migrate.virtuoso.Graph.query')
-    @patch('simple_virtuoso_migrate.virtuoso.Graph.namespaces', return_value=['ns0'])
+    @patch('neptune_migrate.virtuoso.Graph.query')
+    @patch('neptune_migrate.virtuoso.Graph.namespaces', return_value=['ns0'])
     def test_it_should_get_current_version_none_when_database_is_empty(self, graph_mock, graph_query_mock):
         result_mock = MagicMock()
         result_mock.__iter__.return_value = []
@@ -268,8 +268,8 @@ class VirtuosoTest(BaseTest):
         self.assertIsNone(current)
         self.assertIsNone(source)
 
-    @patch('simple_virtuoso_migrate.virtuoso.Graph.query')
-    @patch('simple_virtuoso_migrate.virtuoso.Graph.namespaces', return_value=['ns0'])
+    @patch('neptune_migrate.virtuoso.Graph.query')
+    @patch('neptune_migrate.virtuoso.Graph.namespaces', return_value=['ns0'])
     def test_it_should_get_current_version_when_database_is_not_empty(self, graph_mock, graph_query_mock):
         result_mock = MagicMock()
         result_mock.__iter__.return_value = [('2', 'git'), ('1', 'file')]
@@ -425,7 +425,7 @@ class VirtuosoTest(BaseTest):
             '<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction>'
             ]]
 
-#    @patch('simple_virtuoso_migrate.virtuoso.Virtuoso.get_sparql')
+#    @patch('neptune_migrate.virtuoso.Virtuoso.get_sparql')
 #    def test_it_should_get_statments_to_execute_when_comparing_the_given_file_with_the_current_version(self, get_sparql_mock):
 #        Virtuoso(self.config).get_statements("data.ttl", current_version='01', origen='file')
 #        get_sparql_mock.assert_called_with(None, self.data_ttl_content, '01', None, 'file', 'data.ttl')
@@ -438,7 +438,7 @@ class VirtuosoTest(BaseTest):
         self.config.update('database_migrations_dir', '.')
         self.assertRaisesWithMessage(Exception, 'migration file does not exist (./ontology.ttl)', Virtuoso(self.config).get_ontology_by_version, '01')
 
-    @patch('simple_virtuoso_migrate.virtuoso.Git')
+    @patch('neptune_migrate.virtuoso.Git')
     def test_it_should_return_git_content(self, git_mock):
         execute_mock = Mock(**{'return_value':'content'})
         git_mock.return_value = Mock(**{'execute':execute_mock})

@@ -1,10 +1,10 @@
 from setuptools import setup, find_packages
-import simple_virtuoso_migrate
+import neptune_migrate
 
 
 setup(
     name = "simple-virtuoso-migrate",
-    version = simple_virtuoso_migrate.SIMPLE_VIRTUOSO_MIGRATE_VERSION,
+    version = neptune_migrate.SIMPLE_VIRTUOSO_MIGRATE_VERSION,
     packages = find_packages(),
     author = "Percy Rivera",
     author_email = "priverasalas@gmail.com",
@@ -27,7 +27,7 @@ setup(
     # generate script automatically
     entry_points = {
         'console_scripts': [
-            'virtuoso-migrate = simple_virtuoso_migrate.run:run_from_argv',
+            'virtuoso-migrate = neptune_migrate.run:run_from_argv',
         ],
     }
 )

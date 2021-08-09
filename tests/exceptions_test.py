@@ -1,5 +1,5 @@
 import unittest
-from simple_virtuoso_migrate.core.exceptions import MigrationException
+from neptune_migrate.core.exceptions import MigrationException
 
 class MigrationExceptionTest(unittest.TestCase):
 

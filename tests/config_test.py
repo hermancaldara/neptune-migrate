@@ -1,6 +1,6 @@
 import os
 import unittest
-from simple_virtuoso_migrate.config import Config, FileConfig
+from neptune_migrate.config import Config, FileConfig
 from tests import create_file, delete_files
 
 

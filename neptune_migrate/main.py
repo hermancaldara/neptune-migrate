@@ -256,7 +256,7 @@ class Main(object):
     def _check_configuration(config):
         if not isinstance(config, Config):
             raise Exception("config must be an instance of "
-                            "simple_virtuoso_migrate.config.Config")
+                            "neptune_migrate.config.Config")
 
         required_configs = ['database_host',
                             'database_endpoint',
