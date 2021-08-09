@@ -41,7 +41,7 @@ class Utils(object):
             raise Exception("%s: file not found" % full_filename)
         except Exception as e:
             try:
-                f = open(full_filename, "rU")
+                f = open(full_filename, "r")
                 content = f.read()
                 f.close()
 

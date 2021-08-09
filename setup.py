@@ -16,7 +16,7 @@ setup(
     tests_require=['coverage==3.7', 'mock==1.0.1', ],
     install_requires=[
         'GitPython==0.3.6',
-        'paramiko==2.4.0',
+        'paramiko==2.4.3',
         'rdflib==6.0.0',
         # pyparsing is here because of this: https://github.com/RDFLib/rdflib/pull/1366
         'pyparsing==2.*',
