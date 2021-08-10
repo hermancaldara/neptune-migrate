@@ -1,58 +1,71 @@
 import os
 import unittest
+
 from neptune_migrate.config import Config, FileConfig
 from tests import create_file, delete_files
 
 
 class ConfigTest(unittest.TestCase):
-
     def test_it_should_parse_migrations_dir_with_one_relative_dir(self):
-        dirs = Config._parse_migrations_dir('.')
+        dirs = Config._parse_migrations_dir(".")
         self.assertEqual(1, len(dirs))
-        self.assertEqual(os.path.abspath('.'), dirs[0])
+        self.assertEqual(os.path.abspath("."), dirs[0])
 
     def test_it_should_parse_migrations_dir_with_multiple_relative_dirs(self):
-        dirs = Config._parse_migrations_dir('test:migrations:./a/relative/path:another/path')
+        dirs = Config._parse_migrations_dir(
+            "test:migrations:./a/relative/path:another/path"
+        )
         self.assertEqual(4, len(dirs))
-        self.assertEqual(os.path.abspath('test'), dirs[0])
-        self.assertEqual(os.path.abspath('migrations'), dirs[1])
-        self.assertEqual(os.path.abspath('./a/relative/path'), dirs[2])
-        self.assertEqual(os.path.abspath('another/path'), dirs[3])
+        self.assertEqual(os.path.abspath("test"), dirs[0])
+        self.assertEqual(os.path.abspath("migrations"), dirs[1])
+        self.assertEqual(os.path.abspath("./a/relative/path"), dirs[2])
+        self.assertEqual(os.path.abspath("another/path"), dirs[3])
 
     def test_it_should_parse_migrations_dir_with_one_absolute_dir(self):
-        dirs = Config._parse_migrations_dir(os.path.abspath('.'))
+        dirs = Config._parse_migrations_dir(os.path.abspath("."))
         self.assertEqual(1, len(dirs))
-        self.assertEqual(os.path.abspath('.'), dirs[0])
+        self.assertEqual(os.path.abspath("."), dirs[0])
 
     def test_it_should_parse_migrations_dir_with_multiple_absolute_dirs(self):
-        dirs = Config._parse_migrations_dir('%s:%s:%s:%s' % (
-                os.path.abspath('test'), os.path.abspath('migrations'),
-                os.path.abspath('./a/relative/path'), os.path.abspath('another/path'))
+        dirs = Config._parse_migrations_dir(
+            "%s:%s:%s:%s"
+            % (
+                os.path.abspath("test"),
+                os.path.abspath("migrations"),
+                os.path.abspath("./a/relative/path"),
+                os.path.abspath("another/path"),
+            )
         )
         self.assertEqual(4, len(dirs))
-        self.assertEqual(os.path.abspath('test'), dirs[0])
-        self.assertEqual(os.path.abspath('migrations'), dirs[1])
-        self.assertEqual(os.path.abspath('./a/relative/path'), dirs[2])
-        self.assertEqual(os.path.abspath('another/path'), dirs[3])
+        self.assertEqual(os.path.abspath("test"), dirs[0])
+        self.assertEqual(os.path.abspath("migrations"), dirs[1])
+        self.assertEqual(os.path.abspath("./a/relative/path"), dirs[2])
+        self.assertEqual(os.path.abspath("another/path"), dirs[3])
 
     def test_it_should_parse_migrations_dir_with_mixed_relative_and_absolute_dirs(self):
-        dirs = Config._parse_migrations_dir('%s:%s:%s:%s' % ('/tmp/test', '.', './a/relative/path', os.path.abspath('another/path')))
-        self.assertEqual(4, len(dirs))
-        self.assertEqual('/tmp/test', dirs[0])
-        self.assertEqual(os.path.abspath('.'), dirs[1])
-        self.assertEqual(os.path.abspath('./a/relative/path'), dirs[2])
-        self.assertEqual(os.path.abspath('another/path'), dirs[3])
-
-    def test_it_should_parse_migrations_dir_with_relative_dirs_using_config_dir_parameter_as_base_path(self):
         dirs = Config._parse_migrations_dir(
-                '%s:%s:%s:%s' % ('/tmp/test', '.', './a/relative/path', os.path.abspath('another/path')),
-                config_dir='/base/path_to_relative_dirs'
+            "%s:%s:%s:%s"
+            % ("/tmp/test", ".", "./a/relative/path", os.path.abspath("another/path"))
         )
         self.assertEqual(4, len(dirs))
-        self.assertEqual('/tmp/test', dirs[0])
-        self.assertEqual('/base/path_to_relative_dirs', dirs[1])
-        self.assertEqual('/base/path_to_relative_dirs/a/relative/path', dirs[2])
-        self.assertEqual(os.path.abspath('another/path'), dirs[3])
+        self.assertEqual("/tmp/test", dirs[0])
+        self.assertEqual(os.path.abspath("."), dirs[1])
+        self.assertEqual(os.path.abspath("./a/relative/path"), dirs[2])
+        self.assertEqual(os.path.abspath("another/path"), dirs[3])
+
+    def test_it_should_parse_migrations_dir_with_relative_dirs_using_config_dir_parameter_as_base_path(
+        self,
+    ):
+        dirs = Config._parse_migrations_dir(
+            "%s:%s:%s:%s"
+            % ("/tmp/test", ".", "./a/relative/path", os.path.abspath("another/path")),
+            config_dir="/base/path_to_relative_dirs",
+        )
+        self.assertEqual(4, len(dirs))
+        self.assertEqual("/tmp/test", dirs[0])
+        self.assertEqual("/base/path_to_relative_dirs", dirs[1])
+        self.assertEqual("/base/path_to_relative_dirs/a/relative/path", dirs[2])
+        self.assertEqual(os.path.abspath("another/path"), dirs[3])
 
     def test_it_should_return_value_from_a_dict(self):
         _dict = {"some_key": "some_value"}
@@ -60,9 +73,13 @@ class ConfigTest(unittest.TestCase):
 
     def test_it_should_return_default_value_for_an_inexistent_dict_value(self):
         _dict = {"some_key": "some_value"}
-        self.assertEqual("default_value", Config._get(_dict, "ANOTHER_KEY", "default_value"))
+        self.assertEqual(
+            "default_value", Config._get(_dict, "ANOTHER_KEY", "default_value")
+        )
 
-    def test_it_should_raise_exception_for_an_inexistent_dict_value_without_specify_a_default_value(self):
+    def test_it_should_raise_exception_for_an_inexistent_dict_value_without_specify_a_default_value(
+        self,
+    ):
         _dict = {"some_key": "some_value"}
         try:
             Config._get(_dict, "ANOTHER_KEY")
@@ -87,7 +104,10 @@ class ConfigTest(unittest.TestCase):
         try:
             config.put("some_key", "another_value")
         except Exception as e:
-            self.assertEqual("the configuration key 'some_key' already exists and you cannot override any configuration", str(e))
+            self.assertEqual(
+                "the configuration key 'some_key' already exists and you cannot override any configuration",
+                str(e),
+            )
 
     def test_it_should_remove_saved_config_values(self):
         config = Config()
@@ -118,7 +138,9 @@ class ConfigTest(unittest.TestCase):
         config.put("some_key", "some_value")
         self.assertEqual("default_value", config.get("another_key", "default_value"))
 
-    def test_it_should_raise_exception_for_an_inexistent_config_value_without_specify_a_default_value(self):
+    def test_it_should_raise_exception_for_an_inexistent_config_value_without_specify_a_default_value(
+        self,
+    ):
         config = Config()
         config.put("some_key", "some_value")
         try:
@@ -144,7 +166,9 @@ class ConfigTest(unittest.TestCase):
         config.update("some_key", "some_value")
         self.assertEqual("some_value", config.get("some_key"))
 
-    def test_it_should_update_value_to_a_existing_key_keeping_original_value_if_new_value_is_none_false_or_empty_string(self):
+    def test_it_should_update_value_to_a_existing_key_keeping_original_value_if_new_value_is_none_false_or_empty_string(
+        self,
+    ):
         config = Config()
         config.put("some_key", "original_value")
         config.update("some_key", None)
@@ -165,9 +189,8 @@ class ConfigTest(unittest.TestCase):
 
 
 class FileConfigTest(unittest.TestCase):
-
     def setUp(self):
-        config_file = '''
+        config_file = """
 DATABASE_HOST = 'localhost'
 DATABASE_USER = 'root'
 DATABASE_PASSWORD = ''
@@ -179,61 +202,72 @@ SOME_ENV_DATABASE_ANY_CUSTOM_VARIABLE = 'Other Value'
 DATABASE_OTHER_CUSTOM_VARIABLE = 'Value'
 RUN_AFTER = './some_dummy_action.py'
 RUN_AFTER_PARAMS = {'key': 'value'}
-'''
-        create_file('sample.conf', "%s\nDATABASE_MIGRATIONS_DIR = 'example'" % config_file)
-        create_file('sample2.conf', "%s" % config_file)
-        create_file('sample.py', "import os\n%s\nDATABASE_MIGRATIONS_DIR = 'example'" % config_file)
+"""
+        create_file(
+            "sample.conf", "%s\nDATABASE_MIGRATIONS_DIR = 'example'" % config_file
+        )
+        create_file("sample2.conf", "%s" % config_file)
+        create_file(
+            "sample.py",
+            "import os\n%s\nDATABASE_MIGRATIONS_DIR = 'example'" % config_file,
+        )
 
     def tearDown(self):
-        delete_files('*.conf')
-        delete_files('sample.py')
+        delete_files("*.conf")
+        delete_files("sample.py")
 
     def test_it_should_extend_from_config_class(self):
-        config = FileConfig(os.path.abspath('sample.conf'))
+        config = FileConfig(os.path.abspath("sample.conf"))
         self.assertTrue(isinstance(config, Config))
 
     def test_it_should_read_config_file(self):
-        config_path = os.path.abspath('sample.conf')
+        config_path = os.path.abspath("sample.conf")
         config = FileConfig(config_path)
-        self.assertEqual(config.get('database_host'), 'localhost')
-        self.assertEqual(config.get('database_user'), 'root')
-        self.assertEqual(config.get('database_password'), '')
-        self.assertEqual(config.get('database_name'), 'migration_example')
-        self.assertEqual(config.get("database_migrations_dir"), [os.path.abspath('example')])
-        self.assertEqual(config.get('utc_timestamp'), True)
-        self.assertEqual(config.get('run_after'), './some_dummy_action.py')
-        self.assertEqual(config.get('run_after_params')['key'], 'value')
+        self.assertEqual(config.get("database_host"), "localhost")
+        self.assertEqual(config.get("database_user"), "root")
+        self.assertEqual(config.get("database_password"), "")
+        self.assertEqual(config.get("database_name"), "migration_example")
+        self.assertEqual(
+            config.get("database_migrations_dir"), [os.path.abspath("example")]
+        )
+        self.assertEqual(config.get("utc_timestamp"), True)
+        self.assertEqual(config.get("run_after"), "./some_dummy_action.py")
+        self.assertEqual(config.get("run_after_params")["key"], "value")
 
     def test_it_should_use_configuration_by_environment(self):
-        config_path = os.path.abspath('sample.conf')
+        config_path = os.path.abspath("sample.conf")
         config = FileConfig(config_path, "env1")
-        self.assertEqual('migration_example_env1', config.get('database_name'))
-        self.assertEqual('root', config.get('database_user'))
+        self.assertEqual("migration_example_env1", config.get("database_name"))
+        self.assertEqual("root", config.get("database_user"))
 
     def test_it_should_stop_execution_when_an_invalid_key_is_requested(self):
-        config_path = os.path.abspath('sample.conf')
+        config_path = os.path.abspath("sample.conf")
         config = FileConfig(config_path)
         try:
-            config.get('invalid_config')
-            self.fail('it should not pass here')
+            config.get("invalid_config")
+            self.fail("it should not pass here")
         except Exception as e:
             self.assertEqual("invalid key ('invalid_config')", str(e))
 
     def test_it_should_get_any_database_custom_variable(self):
-        config_path = os.path.abspath('sample.conf')
+        config_path = os.path.abspath("sample.conf")
         config = FileConfig(config_path)
-        self.assertEqual('Some Value', config.get('database_any_custom_variable'))
+        self.assertEqual("Some Value", config.get("database_any_custom_variable"))
 
     def test_it_should_get_any_database_custom_variable_using_environment(self):
-        config_path = os.path.abspath('sample.conf')
-        config = FileConfig(config_path, 'some_env')
-        self.assertEqual('Other Value', config.get('database_any_custom_variable'))
-        self.assertEqual('Value', config.get('database_other_custom_variable'))
+        config_path = os.path.abspath("sample.conf")
+        config = FileConfig(config_path, "some_env")
+        self.assertEqual("Other Value", config.get("database_any_custom_variable"))
+        self.assertEqual("Value", config.get("database_other_custom_variable"))
 
     def test_it_should_accept_a_configuration_file_without_migrations_dir_key(self):
-        config_path = os.path.abspath('sample2.conf')
+        config_path = os.path.abspath("sample2.conf")
         config = FileConfig(config_path)
-        self.assertEqual("no_migrations_dir_key", config.get('migrations_dir', "no_migrations_dir_key"))
+        self.assertEqual(
+            "no_migrations_dir_key",
+            config.get("migrations_dir", "no_migrations_dir_key"),
+        )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

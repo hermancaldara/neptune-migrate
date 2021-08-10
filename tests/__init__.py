@@ -1,14 +1,16 @@
+import codecs
 import glob
 import os
 import unittest
-import codecs
-from neptune_migrate.config import FileConfig
 from io import StringIO
+
 from mock import patch
 
+from neptune_migrate.config import FileConfig
 
-def create_file(file_name, content=None, encoding='utf-8'):
-    f = codecs.open(file_name, 'w', encoding)
+
+def create_file(file_name, content=None, encoding="utf-8"):
+    f = codecs.open(file_name, "w", encoding)
     if content:
         f.write(content)
     f.close()
@@ -21,18 +23,28 @@ def delete_files(pattern):
         os.remove(_file)
 
 
-def create_config(host='localhost',
-                  username='root', password='',
-                  endpoint='migration_example', migrations_dir='.'):
-    config_file = '''
+def create_config(
+    host="localhost",
+    username="root",
+    password="",
+    endpoint="migration_example",
+    migrations_dir=".",
+):
+    config_file = """
 DATABASE_HOST = '%s'
 DATABASE_USER = '%s'
 DATABASE_PASSWORD = '%s'
 DATABASE_ENDPOINT = '%s'
 DATABASE_MIGRATIONS_DIR = '%s'
-''' % (host, username, password, endpoint, migrations_dir)
-    create_file('test_config_file.conf', config_file)
-    return FileConfig('test_config_file.conf')
+""" % (
+        host,
+        username,
+        password,
+        endpoint,
+        migrations_dir,
+    )
+    create_file("test_config_file.conf", config_file)
+    return FileConfig("test_config_file.conf")
 
 
 class Struct:
@@ -44,22 +56,23 @@ class BaseTest(unittest.TestCase):
     maxDiff = None
 
     def setUp(self):
-        self.stdout_mock = patch('sys.stdout', new_callable=StringIO)
+        self.stdout_mock = patch("sys.stdout", new_callable=StringIO)
         self.stdout_mock.start()
 
     def tearDown(self):
         self.stdout_mock.stop()
-        delete_files('*.log')
-        delete_files('*test_migration.migration')
-        delete_files('migrations/*test_migration.migration')
-        if os.path.exists(os.path.abspath('migrations')):
-            os.rmdir(os.path.abspath('migrations'))
-        if os.path.exists(os.path.abspath('test_config_file.conf')):
-            os.remove(os.path.abspath('test_config_file.conf'))
+        delete_files("*.log")
+        delete_files("*test_migration.migration")
+        delete_files("migrations/*test_migration.migration")
+        if os.path.exists(os.path.abspath("migrations")):
+            os.rmdir(os.path.abspath("migrations"))
+        if os.path.exists(os.path.abspath("test_config_file.conf")):
+            os.remove(os.path.abspath("test_config_file.conf"))
 
-    def assertRaisesWithMessage(self, excClass, excMessage, callableObj,
-                                *args, **kwargs):
-        raisedMessage = ''
+    def assertRaisesWithMessage(
+        self, excClass, excMessage, callableObj, *args, **kwargs
+    ):
+        raisedMessage = ""
         try:
             callableObj(*args, **kwargs)
         except excClass as e:
@@ -67,8 +80,11 @@ class BaseTest(unittest.TestCase):
             if excMessage == raisedMessage:
                 return
 
-        if hasattr(excClass, '__name__'):
+        if hasattr(excClass, "__name__"):
             excName = excClass.__name__
         else:
             excName = str(excClass)
-        raise self.failureException("%s not raised with message '%s', the message was '%s'" % (excName, excMessage, raisedMessage))
+        raise self.failureException(
+            "%s not raised with message '%s', the message was '%s'"
+            % (excName, excMessage, raisedMessage)
+        )

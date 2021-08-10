@@ -10,13 +10,15 @@ class LOG(object):
         if log_dir:
             if not os.path.exists(log_dir):
                 os.makedirs(log_dir)
-            self.logger = logging.getLogger('simple-db-migrate')
+            self.logger = logging.getLogger("simple-db-migrate")
 
             now = datetime.now()
-            filename = "%s/%s.log" % (os.path.abspath(log_dir),
-                                      now.strftime("%Y%m%d%H%M%S"))
+            filename = "%s/%s.log" % (
+                os.path.abspath(log_dir),
+                now.strftime("%Y%m%d%H%M%S"),
+            )
             hdlr = logging.FileHandler(filename)
-            formatter = logging.Formatter('%(message)s')
+            formatter = logging.Formatter("%(message)s")
             hdlr.setFormatter(formatter)
             self.logger.addHandler(hdlr)
             self.logger.setLevel(logging.DEBUG)
