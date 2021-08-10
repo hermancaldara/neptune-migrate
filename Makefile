@@ -48,6 +48,7 @@ test: compile
 install:
 	@/usr/bin/env python ./setup.py install
 	@pip install -r requirements_test.txt
+	pre-commit install
 
 ## builds without installing simple-virtuoso-migrate
 build:
