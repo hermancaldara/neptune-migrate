@@ -1,4 +1,3 @@
-import codecs
 import sys
 from getpass import getpass
 
@@ -6,13 +5,6 @@ from .cli import CLI
 from .config import Config, FileConfig
 from .main import Main
 from .version import SIMPLE_VIRTUOSO_MIGRATE_VERSION
-
-# fixing print in non-utf8 terminals
-try:
-    if sys.stdout.encoding != "UTF-8":
-        sys.stdout = codecs.getwriter("utf-8")(sys.stdout)
-except AttributeError:
-    pass  # This may happen when executing tests inside an IDE that replaces sys.stdout for an StringIO
 
 
 def run_from_argv(args=sys.argv[1:]):

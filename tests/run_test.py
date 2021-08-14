@@ -34,19 +34,6 @@ RUN_AFTER = './some_dummy_action.py'
     def tearDown(self):
         delete_files("sample.conf")
 
-    @patch("codecs.getwriter")
-    @patch("sys.stdout", encoding="iso-8859-1")
-    def test_it_should_ensure_stdout_is_using_an_utf8_encoding(
-        self, stdout_mock, codecs_mock
-    ):
-        new_stdout = Mock()
-        codecs_mock.return_value = Mock(**{"return_value": new_stdout})
-
-        importlib.reload(neptune_migrate.run)
-
-        codecs_mock.assert_called_with("utf-8")
-        self.assertEqual(new_stdout, sys.stdout)
-
     def test_it_should_define_a_version_string(self):
         self.assertIsInstance(neptune_migrate.SIMPLE_VIRTUOSO_MIGRATE_VERSION, str)
 
