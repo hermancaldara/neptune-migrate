@@ -18,13 +18,16 @@ setup(
         "mock==1.0.1",
     ],
     install_requires=[
-        "GitPython==0.3.6",
+        "cryptography==3.3",
+        "GitPython==3.1.20",
         "paramiko==2.4.3",
         "rdflib==6.0.0",
         # pyparsing is here because of this: https://github.com/RDFLib/rdflib/pull/1366
         "pyparsing==2.*",
         "rdfextras==0.4",
-        "gitdb==0.6.4",
+        "gitdb==4.0.9",
+        "aws-requests-auth==0.4.3",
+        "requests==2.26.0",
     ],
     # generate script automatically
     entry_points={
