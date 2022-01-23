@@ -46,7 +46,7 @@ test: compile
 
 ## install simple-virtuoso-migrate
 install:
-	@/usr/bin/env python ./setup.py install
+	python setup.py develop
 	@pip install -r requirements_test.txt
 	pre-commit install
 
