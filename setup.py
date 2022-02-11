@@ -3,9 +3,9 @@ from setuptools import find_packages, setup
 import neptune_migrate
 
 setup(
-    name="simple-virtuoso-migrate",
+    name="neptune-migrate",
     version=neptune_migrate.SIMPLE_VIRTUOSO_MIGRATE_VERSION,
-    packages=find_packages(),
+    packages=find_packages(exclude=("tests",)),
     author="Percy Rivera",
     author_email="priverasalas@gmail.com",
     description="simple-virtuoso-migrate is a Virtuoso database migration tool inspired on simple-db-migrate.",
@@ -32,7 +32,7 @@ setup(
     # generate script automatically
     entry_points={
         "console_scripts": [
-            "virtuoso-migrate = neptune_migrate.run:run_from_argv",
+            "neptune-migrate = neptune_migrate.run:run_from_argv",
         ],
     },
 )

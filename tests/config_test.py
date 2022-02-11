@@ -213,7 +213,7 @@ RUN_AFTER_PARAMS = {'key': 'value'}
         )
 
     def tearDown(self):
-        delete_files("*.conf")
+        delete_files("sample*.conf")
         delete_files("sample.py")
 
     def test_it_should_extend_from_config_class(self):

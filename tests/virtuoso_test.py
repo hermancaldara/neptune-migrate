@@ -10,6 +10,7 @@ from rdflib.graph import ConjunctiveGraph
 from neptune_migrate.config import Config
 from neptune_migrate.core.exceptions import MigrationException
 from neptune_migrate.main import Virtuoso
+from neptune_migrate.neptune.client import NeptuneClient
 from tests import BaseTest, create_file, delete_files
 
 
@@ -29,6 +30,11 @@ class VirtuosoTest(BaseTest):
         self.config.put("host_password", "host-passwd")
         self.config.put("virtuoso_dirs_allowed", "/tmp")
         self.config.put("migration_graph", "http://example.com/")
+        self.config.put("aws_access_key", "a-fake-access-key")
+        self.config.put("aws_secret_access_key", "a-fake-secret-access-key")
+        self.config.put("aws_neptune_url", "https://fake-neptune-host.com:8182")
+        self.config.put("aws_neptune_host", "fake-neptune-host.com:8182")
+        self.config.put("aws_region", "sa-east-1")
         create_file("test.ttl", "")
 
         self.data_ttl_content = """
@@ -195,167 +201,46 @@ class VirtuosoTest(BaseTest):
     #        virtuoso = Virtuoso(self.config)
     #        self.assertRaisesWithMessage(Exception, 'could not connect to virtuoso: some error', virtuoso.connect)
 
-    @patch(
-        "neptune_migrate.virtuoso.Utils.write_temporary_file",
-        return_value="filename.ttl",
-    )
-    @patch("neptune_migrate.virtuoso.Virtuoso._run_isql", return_value=("", ""))
-    def test_it_should_write_a_file_with_sparql_up_when_executing_change(
-        self, run_isql_mock, write_temporary_file_mock
-    ):
-        virtuoso = Virtuoso(self.config)
-        virtuoso.execute_change("sparql_up", "sparql_down")
-        write_temporary_file_mock.assert_called_with(
-            "set echo on;\nsparql_up", "file_up"
-        )
-        run_isql_mock.assert_called_with("filename.ttl", True)
-
-    @patch(
-        "neptune_migrate.virtuoso.Utils.write_temporary_file",
-        return_value="filename.ttl",
-    )
-    @patch("neptune_migrate.virtuoso.Virtuoso._run_isql", return_value=("", ""))
-    def test_it_should_delete_the_temporary_file_with_sparql_up_when_executing_change(
-        self, run_isql_mock, write_temporary_file_mock
-    ):
-        create_file("filename.ttl", "content")
-
-        virtuoso = Virtuoso(self.config)
-        virtuoso.execute_change("sparql_up", "sparql_down")
-        self.assertFalse(os.path.exists("filename.ttl"))
-
-    @patch(
-        "neptune_migrate.virtuoso.Utils.write_temporary_file",
-        return_value="filename.ttl",
-    )
-    @patch(
-        "neptune_migrate.virtuoso.Virtuoso._run_isql",
-        side_effect=Exception("some error"),
-    )
-    def test_it_should_delete_the_temporary_file_with_sparql_up_when_executing_change_raise_an_error(
-        self, run_isql_mock, write_temporary_file_mock
-    ):
-        create_file("filename.ttl", "content")
-
-        virtuoso = Virtuoso(self.config)
-        self.assertRaisesWithMessage(
-            Exception, "some error", virtuoso.execute_change, "sparql_up", "sparql_down"
-        )
-        self.assertFalse(os.path.exists("filename.ttl"))
-
-    @patch("neptune_migrate.virtuoso.Utils.write_temporary_file")
-    @patch("neptune_migrate.virtuoso.Virtuoso._run_isql")
-    def test_it_should_write_a_file_with_sparql_down_when_executing_change_raise_an_error(
-        self, run_isql_mock, write_temporary_file_mock
-    ):
-        run_isql_mock.side_effect = command_call_side_effect
-        write_temporary_file_mock.side_effect = temp_file_side_effect
-
-        virtuoso = Virtuoso(self.config)
-        self.assertRaisesWithMessage(
-            MigrationException,
-            "\nerror executing migration statement: err\n\nRollback done successfully!!!",
-            virtuoso.execute_change,
-            "sparql_up",
-            "sparql_down",
-        )
-        expected_calls = [
-            call("set echo on;\nsparql_up", "file_up"),
-            call("set echo on;\nsparql_down", "file_down"),
-        ]
-        self.assertEqual(expected_calls, write_temporary_file_mock.mock_calls)
-
-        expected_calls = [
-            call("filename_up.ttl", True),
-            call("filename_down.ttl", True),
-        ]
-        self.assertEqual(expected_calls, run_isql_mock.mock_calls)
-
-    @patch("neptune_migrate.virtuoso.Utils.write_temporary_file")
-    @patch("neptune_migrate.virtuoso.Virtuoso._run_isql")
-    def test_it_should_delete_the_temporary_file_with_sparql_down_when_executing_change(
-        self, run_isql_mock, write_temporary_file_mock
-    ):
-        create_file("filename_down.ttl", "content")
-        run_isql_mock.side_effect = command_call_side_effect
-        write_temporary_file_mock.side_effect = temp_file_side_effect
-
-        virtuoso = Virtuoso(self.config)
-        self.assertRaisesWithMessage(
-            MigrationException,
-            "\nerror executing migration statement: err\n\nRollback done successfully!!!",
-            virtuoso.execute_change,
-            "sparql_up",
-            "sparql_down",
-        )
-        self.assertFalse(os.path.exists("filename_down.ttl"))
-
-    @patch("neptune_migrate.virtuoso.Utils.write_temporary_file")
-    @patch("neptune_migrate.virtuoso.Virtuoso._run_isql")
-    def test_it_should_raise_a_specific_message_when_rollback_fails_when_executing_change(
-        self, run_isql_mock, write_temporary_file_mock
-    ):
-        def command_call_side_effect(*args):
-            if (args[0].find("_up") > 0) or (args[0].find("_down") > 0):
-                return ("", "err")
-            return ("out", "")
-
-        run_isql_mock.side_effect = command_call_side_effect
-        write_temporary_file_mock.side_effect = temp_file_side_effect
-
-        virtuoso = Virtuoso(self.config)
-        self.assertRaisesWithMessage(
-            MigrationException,
-            "\nerror executing migration statement: err\n\nRollback done partially: error executing rollback statement: err",
-            virtuoso.execute_change,
-            "sparql_up",
-            "sparql_down",
-        )
-
-    @patch(
-        "neptune_migrate.virtuoso.Utils.write_temporary_file",
-        return_value="filename.ttl",
-    )
-    @patch("neptune_migrate.virtuoso.Virtuoso._run_isql", return_value=("output", ""))
-    def test_it_should_log_stdout_when_executing_change(
-        self, run_isql_mock, write_temporary_file_mock
-    ):
+    def test_it_should_log_stdout_when_executing_change(self):
         execution_log = Mock()
         virtuoso = Virtuoso(self.config)
         virtuoso.execute_change("sparql_up", "sparql_down", execution_log)
-        execution_log.assert_called_with("output")
+        execution_log.assert_called
 
-    @patch("neptune_migrate.virtuoso.Graph.query")
-    @patch("neptune_migrate.virtuoso.Graph.namespaces", return_value=["ns0"])
+    @patch.object(NeptuneClient, "execute_query")
     def test_it_should_get_current_version_none_when_database_is_empty(
-        self, graph_mock, graph_query_mock
+        self, mock_execute_query
     ):
-        result_mock = MagicMock()
-        result_mock.__iter__.return_value = []
-        result_mock.__len__.return_value = 0
-        graph_query_mock.return_value = result_mock
+        mock_execute_query.return_value = {"results": {"bindings": []}}
         current, source = Virtuoso(self.config).get_current_version()
 
-        graph_query_mock.assert_called_with(
-            'prefix owl: <http://www.w3.org/2002/07/owl#>\nprefix xsd: <http://www.w3.org/2001/XMLSchema#>\nselect distinct ?version ?origen\nFROM <http://example.com/>\n{{\nselect distinct ?version ?origen ?data\nFROM <http://example.com/>\nwhere {?s owl:versionInfo ?version;\n<http://example.com/commited> ?data;\n<http://example.com/produto> "test";\n<http://example.com/origen> ?origen.}\nORDER BY desc(?data) LIMIT 1\n}}'
+        mock_execute_query.assert_called_with(
+            'prefix owl: <http://www.w3.org/2002/07/owl#>\nprefix xsd: <http://www.w3.org/2001/XMLSchema#>\nselect distinct ?version ?origen\nFROM <http://example.com/>\n{{\nselect distinct ?version ?origen ?data\nwhere {?s owl:versionInfo ?version;\n<http://example.com/commited> ?data;\n<http://example.com/produto> "test";\n<http://example.com/origen> ?origen.}\nORDER BY desc(?data) LIMIT 1\n}}'
         )
-
         self.assertIsNone(current)
         self.assertIsNone(source)
 
-    @patch("neptune_migrate.virtuoso.Graph.query")
-    @patch("neptune_migrate.virtuoso.Graph.namespaces", return_value=["ns0"])
+    @patch.object(NeptuneClient, "execute_query")
     def test_it_should_get_current_version_when_database_is_not_empty(
-        self, graph_mock, graph_query_mock
+        self, mock_execute_query
     ):
-        result_mock = MagicMock()
-        result_mock.__iter__.return_value = [("2", "git"), ("1", "file")]
-        result_mock.__len__.return_value = 2
-        graph_query_mock.return_value = result_mock
+        mock_execute_query.return_value = {
+            "results": {
+                "bindings": [
+                    {
+                        "version": {"type": "string", "value": 2},
+                        "origen": {"type": "string", "value": "git"},
+                    },
+                    {
+                        "version": {"type": "string", "value": 1},
+                        "origen": {"type": "string", "value": "file"},
+                    },
+                ]
+            }
+        }
 
         current, source = Virtuoso(self.config).get_current_version()
 
-        self.assertEqual(["version", "origen"], result_mock.vars)
         self.assertEqual("2", current)
         self.assertEqual("git", source)
 
@@ -366,13 +251,17 @@ class VirtuosoTest(BaseTest):
         )
 
         self.assertEqual(
-            '\nSPARQL INSERT INTO <http://example.com/> { [] owl:versionInfo "None"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "None"; <http://example.com/inserted> "data.ttl".};'
-            % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            [
+                'INSERT DATA { GRAPH <http://example.com/> { [] owl:versionInfo "None"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "None"; <http://example.com/inserted> "data.ttl".} };'
+                % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            ],
             query_up,
         )
         self.assertEqual(
-            '\nSPARQL DELETE FROM <http://example.com/> {?s ?p ?o} WHERE {?s owl:versionInfo "None"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "None"; <http://example.com/inserted> "data.ttl"; ?p ?o.};'
-            % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            [
+                'WITH <http://example.com/> DELETE {?s ?p ?o} WHERE {?s owl:versionInfo "None"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "None"; <http://example.com/inserted> "data.ttl"; ?p ?o.};'
+                % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            ],
             query_down,
         )
 
@@ -384,19 +273,27 @@ class VirtuosoTest(BaseTest):
             destination_ontology=self.structure_03_ttl_content,
         )
 
-        query_up_lines = [line.strip() for line in query_up.split("\n")[1:]]
+        self.assertTrue(len(query_up), 3)
+        self.assertTrue(
+            query_up[0].startswith(
+                "WITH <{}> DELETE".format(self.config.get("database_graph"))
+            )
+        )
+        self.assertTrue(query_up[1].startswith("INSERT DATA"))
+        self.assertTrue(query_up[2].startswith("INSERT DATA"))
 
-        self.assertTrue(len(query_up_lines), 3)
-        self.assertTrue(query_up_lines[0].startswith("SPARQL DELETE FROM"))
-        self.assertTrue(query_up_lines[1].startswith("SPARQL INSERT INTO"))
-        self.assertTrue(query_up_lines[2].startswith("SPARQL INSERT INTO"))
-
-        query_down_lines = [line.strip() for line in query_down.split("\n")[1:]]
-
-        self.assertTrue(len(query_down_lines), 3)
-        self.assertTrue(query_down_lines[0].startswith("SPARQL DELETE FROM"))
-        self.assertTrue(query_down_lines[1].startswith("SPARQL DELETE FROM"))
-        self.assertTrue(query_down_lines[2].startswith("SPARQL INSERT INTO"))
+        self.assertTrue(len(query_down), 3)
+        self.assertTrue(
+            query_down[0].startswith(
+                "WITH <{}> DELETE".format(self.config.get("database_graph"))
+            )
+        )
+        self.assertTrue(
+            query_down[1].startswith(
+                "WITH <{}> DELETE".format(self.config.get("database_graph"))
+            )
+        )
+        self.assertTrue(query_down[2].startswith("INSERT DATA"))
 
     def test_generate_migration_sparql_commands_when_only_a_triple_of_an_existing_blank_node_is_deleted(
         self,
@@ -414,13 +311,16 @@ class VirtuosoTest(BaseTest):
         query_up, query_down = virtuoso_._generate_migration_sparql_commands(
             origin_store=graph_after, destination_store=graph_before
         )
-        expected_query_up = '\nSPARQL INSERT INTO <test> { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf> [<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> ; <http://www.w3.org/2002/07/owl#minQualifiedCardinality> "1"^^<http://www.w3.org/2001/XMLSchema#integer> ; <http://www.w3.org/2002/07/owl#onClass> <http://example.com/RoleOnSoapOpera> ; <http://www.w3.org/2002/07/owl#onProperty> <http://example.com/play_a_role> ; ] };'
-        expected_query_down = '\nSPARQL DELETE FROM <test> { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf>  ?s. ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> ; <http://www.w3.org/2002/07/owl#minQualifiedCardinality> "1"^^<http://www.w3.org/2001/XMLSchema#integer> ; <http://www.w3.org/2002/07/owl#onClass> <http://example.com/RoleOnSoapOpera> ; <http://www.w3.org/2002/07/owl#onProperty> <http://example.com/play_a_role>  } WHERE { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf>  ?s. ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> ; <http://www.w3.org/2002/07/owl#minQualifiedCardinality> "1"^^<http://www.w3.org/2001/XMLSchema#integer> ; <http://www.w3.org/2002/07/owl#onClass> <http://example.com/RoleOnSoapOpera> ; <http://www.w3.org/2002/07/owl#onProperty> <http://example.com/play_a_role>  };'
+        expected_query_up = [
+            'INSERT DATA { GRAPH <test> { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf> [<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> ; <http://www.w3.org/2002/07/owl#minQualifiedCardinality> "1"^^<http://www.w3.org/2001/XMLSchema#integer> ; <http://www.w3.org/2002/07/owl#onClass> <http://example.com/RoleOnSoapOpera> ; <http://www.w3.org/2002/07/owl#onProperty> <http://example.com/play_a_role> ; ] } };'
+        ]
+        expected_query_down = [
+            'WITH <test> DELETE { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf>  ?s. ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> ; <http://www.w3.org/2002/07/owl#minQualifiedCardinality> "1"^^<http://www.w3.org/2001/XMLSchema#integer> ; <http://www.w3.org/2002/07/owl#onClass> <http://example.com/RoleOnSoapOpera> ; <http://www.w3.org/2002/07/owl#onProperty> <http://example.com/play_a_role>  } WHERE { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf>  ?s. ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> ; <http://www.w3.org/2002/07/owl#minQualifiedCardinality> "1"^^<http://www.w3.org/2001/XMLSchema#integer> ; <http://www.w3.org/2002/07/owl#onClass> <http://example.com/RoleOnSoapOpera> ; <http://www.w3.org/2002/07/owl#onProperty> <http://example.com/play_a_role>  };'
+        ]
         self.assertEqual(query_up, expected_query_up)
         self.assertEqual(query_down, expected_query_down)
 
     def test_it_should_get_sparql_statments_when_forward_migration(self):
-
         query_up, query_down = Virtuoso(self.config).get_sparql(
             current_ontology=self.structure_01_ttl_content,
             destination_ontology=self.structure_02_ttl_content,
@@ -429,37 +329,36 @@ class VirtuosoTest(BaseTest):
         )
 
         expected_lines_up = [
-            "SPARQL INSERT INTO <test> {<http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . };",
-            "SPARQL INSERT INTO <test> {<http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . };",
+            "INSERT DATA { GRAPH <test> { <http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . } };",
+            "INSERT DATA { GRAPH <test> { <http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . } };",
         ]
 
-        expected_log_migration_up = """SPARQL INSERT INTO <http://example.com/> { [] owl:versionInfo "02"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "\\n<log>".};""" % datetime.datetime.now().strftime(
+        expected_log_migration_up = """INSERT DATA { GRAPH <http://example.com/> { [] owl:versionInfo "02"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "<log>".} };""" % datetime.datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
         )
 
         expected_lines_down = [
-            "SPARQL DELETE FROM <test> {<http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . };",
-            "SPARQL DELETE FROM <test> {<http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . };",
+            "WITH <test> DELETE { <http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . } WHERE { <http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . }",
+            "WITH <test> DELETE { <http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . } WHERE { <http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . }",
         ]
 
-        expected_log_migration_down = """SPARQL DELETE FROM <http://example.com/> {?s ?p ?o} WHERE {?s owl:versionInfo "02"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "\\n<log>"; ?p ?o.};""" % datetime.datetime.now().strftime(
+        expected_log_migration_down = """WITH <http://example.com/> DELETE {?s ?p ?o} WHERE {?s owl:versionInfo "02"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "<log>"; ?p ?o.};""" % datetime.datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        lines_up = query_up.strip(" \t\n\r").splitlines()
-        self.assertEqual(4, len(lines_up))
-        [self.assertTrue(l in lines_up) for l in expected_lines_up]
+        self.assertEqual(4, len(query_up))
+        [self.assertTrue(l in query_up) for l in expected_lines_up]
         self.assertEqual(
-            lines_up[-1],
+            query_up[-1],
             expected_log_migration_up.replace(
                 "<log>",
-                "\n".join(lines_up[0:-1]).replace('"', '\\"').replace("\n", "\\n"),
+                "\n".join(query_up[0:-1]).replace('"', '\\"').replace("\n", "\\n"),
             ),
         )
 
         matchObj = re.search(
-            r"SPARQL INSERT INTO <test> { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf> \[(.*)\] };",
-            query_up,
+            r"INSERT DATA { GRAPH <test> { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf> \[(.*)\] } };",
+            "\n".join(query_up),
             re.MULTILINE,
         )
         sub_classes = [
@@ -476,19 +375,20 @@ class VirtuosoTest(BaseTest):
             ]
         ]
 
-        lines_down = query_down.strip(" \t\n\r").splitlines()
-        self.assertEqual(4, len(lines_down))
-        [self.assertTrue(l in lines_down) for l in expected_lines_down]
+        self.assertEqual(4, len(query_down))
+        [self.assertTrue(l in query_down) for l in expected_lines_down]
         self.assertEqual(
-            lines_down[-1],
+            query_down[-1],
             expected_log_migration_down.replace(
                 "<log>",
-                "\n".join(lines_up[0:-1]).replace('"', '\\"').replace("\n", "\\n"),
+                "\n".join(query_up[0:-1]).replace('"', '\\"').replace("\n", "\\n"),
             ),
         )
 
         matchObj = re.search(
-            r"SPARQL DELETE FROM <test> {(.*)} WHERE {(.*)};", query_down, re.MULTILINE
+            r"WITH <test> DELETE {(.*)} WHERE {(.*)};",
+            "\n".join(query_down),
+            re.MULTILINE,
         )
         sub_classes_01 = [
             c.strip(" \t\n\r") for c in re.split(r" ; | \?s\. \?s ", matchObj.group(1))
@@ -518,40 +418,41 @@ class VirtuosoTest(BaseTest):
         )
 
         expected_lines_up = [
-            "SPARQL DELETE FROM <test> {<http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . };",
-            "SPARQL DELETE FROM <test> {<http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . };",
+            "WITH <test> DELETE { <http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . } WHERE { <http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . }",
+            "WITH <test> DELETE { <http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . } WHERE { <http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . }",
         ]
 
-        expected_log_migration_up = """SPARQL INSERT INTO <http://example.com/> { [] owl:versionInfo "01"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "\\n<log>".};""" % datetime.datetime.now().strftime(
+        expected_log_migration_up = """INSERT DATA { GRAPH <http://example.com/> { [] owl:versionInfo "01"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "<log>".} };""" % datetime.datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
         )
 
         expected_lines_down = [
-            "SPARQL INSERT INTO <test> {<http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . };",
-            "SPARQL INSERT INTO <test> {<http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . };",
+            "INSERT DATA { GRAPH <test> { <http://example.com/RoleOnSoapOpera> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . } };",
+            "INSERT DATA { GRAPH <test> { <http://example.com/role> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> . } };",
         ]
 
-        expected_log_migration_down = """SPARQL DELETE FROM <http://example.com/> {?s ?p ?o} WHERE {?s owl:versionInfo "01"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "\\n<log>"; ?p ?o.};""" % datetime.datetime.now().strftime(
+        expected_log_migration_down = """WITH <http://example.com/> DELETE {?s ?p ?o} WHERE {?s owl:versionInfo "01"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "<log>"; ?p ?o.};""" % datetime.datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        """SPARQL INSERT INTO <http://example.com/> { [] owl:versionInfo "01"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "\\n<log>".};""" % datetime.datetime.now().strftime(
+        """INSERT DATA { GRAPH <http://example.com/> { [] owl:versionInfo "01"; <http://example.com/endpoint> "endpoint"; <http://example.com/usuario> "user"; <http://example.com/ambiente> "localhost"; <http://example.com/produto> "test"; <http://example.com/commited> "%s"^^xsd:dateTime; <http://example.com/origen> "file"; <http://example.com/changes> "\\n<log>".} };""" % datetime.datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        lines_up = query_up.strip(" \t\n\r").splitlines()
-        self.assertEqual(4, len(lines_up))
-        [self.assertTrue(l in lines_up) for l in expected_lines_up]
+        self.assertEqual(4, len(query_up))
+        [self.assertTrue(l in query_up) for l in expected_lines_up]
         self.assertEqual(
-            lines_up[-1],
+            query_up[-1],
             expected_log_migration_up.replace(
                 "<log>",
-                "\n".join(lines_up[0:-1]).replace('"', '\\"').replace("\n", "\\n"),
+                "\n".join(query_up[0:-1]).replace('"', '\\"').replace("\n", "\\n"),
             ),
         )
 
         matchObj = re.search(
-            r"SPARQL DELETE FROM <test> {(.*)} WHERE {(.*)};", query_up, re.MULTILINE
+            r"WITH <test> DELETE {(.*)} WHERE {(.*)};",
+            "\n".join(query_up),
+            re.MULTILINE,
         )
         sub_classes_01 = [
             c.strip(" \t\n\r") for c in re.split(r" ; | \?s\. \?s ", matchObj.group(1))
@@ -571,20 +472,19 @@ class VirtuosoTest(BaseTest):
             ]
         ]
 
-        lines_down = query_down.strip(" \t\n\r").splitlines()
-        self.assertEqual(4, len(lines_down))
-        [self.assertTrue(l in lines_down) for l in expected_lines_down]
+        self.assertEqual(4, len(query_down))
+        [self.assertTrue(l in query_down) for l in expected_lines_down]
         self.assertEqual(
-            lines_down[-1],
+            query_down[-1],
             expected_log_migration_down.replace(
                 "<log>",
-                "\n".join(lines_up[0:-1]).replace('"', '\\"').replace("\n", "\\n"),
+                "\n".join(query_up[0:-1]).replace('"', '\\"').replace("\n", "\\n"),
             ),
         )
 
         matchObj = re.search(
-            r"SPARQL INSERT INTO <test> { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf> \[(.*)\] };",
-            query_down,
+            r"INSERT DATA { GRAPH <test> { <http://example.com/role> <http://www.w3.org/2000/01/rdf-schema#subClassOf> \[(.*)\] } };",
+            "\n".join(query_down),
             re.MULTILINE,
         )
         sub_classes = [

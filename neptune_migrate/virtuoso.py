@@ -11,6 +11,9 @@ from git import Git
 from rdflib.graph import ConjunctiveGraph, Graph
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
+from neptune_migrate.neptune.auth import get_aws_auth
+from neptune_migrate.neptune.client import NeptuneClient
+
 from . import ssh
 from .core.exceptions import MigrationException
 from .helpers import Utils
@@ -42,6 +45,7 @@ class Virtuoso(object):
         self.__virtuoso_graph = config.get("database_graph")
         self.__virtuoso_ontology = config.get("database_ontology")
         self._migrations_dir = config.get("database_migrations_dir")
+        self._neptune_client = NeptuneClient(get_aws_auth(config), config)
 
         if self.__virtuoso_dirs_allowed:
             self._virtuoso_dir = os.path.realpath(self.__virtuoso_dirs_allowed)
@@ -115,43 +119,18 @@ class Virtuoso(object):
     def execute_change(self, sparql_up, sparql_down, execution_log=None):
         """Final Step. Execute the changes to the Database"""
 
-        file_up = None
-        file_down = None
         try:
-            file_up = Utils.write_temporary_file(
-                ("set echo on;\n%s" % sparql_up), "file_up"
-            )
-
-            # db = self.connect()
-            stdout_value, stderr_value = self._run_isql(file_up, True)
-            if len(stderr_value) > 0:
-                # rollback
-                file_down = Utils.write_temporary_file(
-                    ("set echo on;\n%s" % sparql_down), "file_down"
-                )
-                _, stderr_value_rollback = self._run_isql(file_down, True)
-                if len(stderr_value_rollback) > 0:
-                    raise MigrationException(
-                        "\nerror executing migration "
-                        "statement: %s\n\nRollback done "
-                        "partially: error executing rollback "
-                        "statement: %s" % (stderr_value, stderr_value_rollback)
+            for index, query in enumerate(sparql_up):
+                response = self._neptune_client.update_query(query)
+                if execution_log:
+                    execution_log(f"Everythin ok. Response was: {response}", "GREEN")
+                    execution_log(
+                        f"If needed, here it goes the rollback query:\n{sparql_down[index]}",
+                        "GREEN",
                     )
-                else:
-                    raise MigrationException(
-                        "\nerror executing migration "
-                        "statement: %s\n\nRollback done "
-                        "successfully!!!" % stderr_value
-                    )
-
+        except Exception as e:
             if execution_log:
-                execution_log(stdout_value)
-        finally:
-            if file_up and os.path.exists(file_up):
-                os.unlink(file_up)
-
-            if file_down and os.path.exists(file_down):
-                os.unlink(file_down)
+                execution_log(f"Some error happened. Erro was: {e}")
 
     def get_current_version(self):
         """Get Virtuoso Database Graph Current Version"""
@@ -163,7 +142,6 @@ select distinct ?version ?origen
 FROM <%(m_graph)s>
 {{
 select distinct ?version ?origen ?data
-FROM <%(m_graph)s>
 where {?s owl:versionInfo ?version;
 <%(m_graph)scommited> ?data;
 <%(m_graph)sproduto> "%(v_graph)s";
@@ -174,30 +152,21 @@ ORDER BY desc(?data) LIMIT 1
             "v_graph": self.__virtuoso_graph,
         }
 
-        graph = Graph(store="SPARQLStore")
-        graph.open(self.__virtuoso_endpoint, create=False)
-        graph.store.baseURI = self.__virtuoso_endpoint
-        ns = list(graph.namespaces())
-        assert len(ns) > 0, ns
+        result = self._neptune_client.execute_query(query)
 
-        res = graph.query(query)
-
-        graph.close()
-
-        nroResults = len(res)
-        if nroResults > 0:
-            res.vars = ["version", "origen"]
-            versao, origem = next(iter(res))
-            versao = None if str(versao) == "None" else str(versao)
-            return versao, str(origem)
-        else:
+        if not result["results"]["bindings"]:
             return None, None
+
+        return (
+            str(result["results"]["bindings"][0]["version"]["value"]),
+            str(result["results"]["bindings"][0]["origen"]["value"]),
+        )
 
     def _generate_migration_sparql_commands(self, origin_store, destination_store):
         diff = (origin_store - destination_store) or []
         checked = set()
-        forward_migration = ""
-        backward_migration = ""
+        forward_migration = []
+        backward_migration = []
 
         for subject, predicate, object_ in diff:
 
@@ -258,9 +227,8 @@ ORDER BY desc(?data) LIMIT 1
                 )
 
                 if not blank_node_existing_triples or blank_node_triples_changed:
-                    forward_migration = (
-                        forward_migration
-                        + "\nSPARQL INSERT INTO <%s> { %s[%s] };"
+                    forward_migration.append(
+                        "INSERT DATA { GRAPH <%s> { %s[%s] } };"
                         % (
                             self.__virtuoso_graph,
                             blank_node_as_an_object,
@@ -269,23 +237,23 @@ ORDER BY desc(?data) LIMIT 1
                     )
                     blank_node_as_a_subject = blank_node_as_a_subject[:-2]
 
-                    backward_migration = backward_migration + (
-                        "\nSPARQL DELETE FROM <%s> { %s ?s. ?s %s } WHERE "
+                    backward_migration.append(
+                        "WITH <%s> DELETE { %s ?s. ?s %s } WHERE "
                         "{ %s ?s. ?s %s };"
-                    ) % (
-                        self.__virtuoso_graph,
-                        blank_node_as_an_object,
-                        blank_node_as_a_subject,
-                        blank_node_as_an_object,
-                        blank_node_as_a_subject,
+                        % (
+                            self.__virtuoso_graph,
+                            blank_node_as_an_object,
+                            blank_node_as_a_subject,
+                            blank_node_as_an_object,
+                            blank_node_as_a_subject,
+                        )
                     )
 
             if isinstance(subject, rdflib.term.URIRef) and not isinstance(
                 object_, rdflib.term.BNode
             ):
-                forward_migration = (
-                    forward_migration
-                    + "\nSPARQL INSERT INTO <%s> {%s %s %s . };"
+                forward_migration.append(
+                    "INSERT DATA { GRAPH <%s> { %s %s %s . } };"
                     % (
                         self.__virtuoso_graph,
                         subject.n3(),
@@ -293,11 +261,13 @@ ORDER BY desc(?data) LIMIT 1
                         object_.n3(),
                     )
                 )
-                backward_migration = (
-                    backward_migration
-                    + "\nSPARQL DELETE FROM <%s> {%s %s %s . };"
+                backward_migration.append(
+                    "WITH <%s> DELETE { %s %s %s . } WHERE { %s %s %s . }"
                     % (
                         self.__virtuoso_graph,
+                        subject.n3(),
+                        predicate.n3(),
+                        Utils.get_normalized_n3(object_),
                         subject.n3(),
                         predicate.n3(),
                         Utils.get_normalized_n3(object_),
@@ -316,8 +286,8 @@ ORDER BY desc(?data) LIMIT 1
         insert=None,
     ):
         """Make sparql statements to be executed"""
-        query_up = ""
-        query_down = ""
+        query_up = []
+        query_down = []
         if insert is None:
 
             current_graph = ConjunctiveGraph()
@@ -339,7 +309,6 @@ ORDER BY desc(?data) LIMIT 1
             )
             query_up = forward_delete + forward_insert
             query_down = backward_delete + backward_insert
-
         # Registry schema changes on migration_graph
         now = datetime.datetime.now()
         values = {
@@ -353,55 +322,71 @@ ORDER BY desc(?data) LIMIT 1
             "origen": origen,
             "date": str(now.strftime("%Y-%m-%d %H:%M:%S")),
             "insert": insert,
-            "query_up": query_up.replace('"', '\\"').replace("\n", "\\n"),
-            "query_down": query_down.replace('"', '\\"').replace("\n", "\\n"),
+            "query_up": "\n".join(query_up).replace('"', '\\"').replace("\n", "\\n"),
+            "query_down": "\n".join(query_down)
+            .replace('"', '\\"')
+            .replace("\n", "\\n"),
         }
         if insert is not None:
-            query_up += (
-                "\nSPARQL INSERT INTO <%(m_graph)s> { "
-                '[] owl:versionInfo "%(c_version)s"; '
-                '<%(m_graph)sendpoint> "%(endpoint)s"; '
-                '<%(m_graph)susuario> "%(user)s"; '
-                '<%(m_graph)sambiente> "%(host)s"; '
-                '<%(m_graph)sproduto> "%(v_graph)s"; '
-                '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
-                '<%(m_graph)sorigen> "%(origen)s"; '
-                '<%(m_graph)sinserted> "%(insert)s".};'
-            ) % values
-            query_down += (
-                "\nSPARQL DELETE FROM <%(m_graph)s> {?s ?p ?o} "
-                'WHERE {?s owl:versionInfo "%(c_version)s"; '
-                '<%(m_graph)sendpoint> "%(endpoint)s"; '
-                '<%(m_graph)susuario> "%(user)s"; '
-                '<%(m_graph)sambiente> "%(host)s"; '
-                '<%(m_graph)sproduto> "%(v_graph)s"; '
-                '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
-                '<%(m_graph)sorigen> "%(origen)s"; '
-                '<%(m_graph)sinserted> "%(insert)s"; ?p ?o.};'
-            ) % values
+            query_up.append(
+                (
+                    "INSERT DATA { GRAPH <%(m_graph)s> { "
+                    '[] owl:versionInfo "%(c_version)s"; '
+                    '<%(m_graph)sendpoint> "%(endpoint)s"; '
+                    '<%(m_graph)susuario> "%(user)s"; '
+                    '<%(m_graph)sambiente> "%(host)s"; '
+                    '<%(m_graph)sproduto> "%(v_graph)s"; '
+                    '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
+                    '<%(m_graph)sorigen> "%(origen)s"; '
+                    '<%(m_graph)sinserted> "%(insert)s".} };'
+                )
+                % values
+            )
+            query_down.append(
+                (
+                    "WITH <%(m_graph)s> DELETE {?s ?p ?o} "
+                    'WHERE {?s owl:versionInfo "%(c_version)s"; '
+                    '<%(m_graph)sendpoint> "%(endpoint)s"; '
+                    '<%(m_graph)susuario> "%(user)s"; '
+                    '<%(m_graph)sambiente> "%(host)s"; '
+                    '<%(m_graph)sproduto> "%(v_graph)s"; '
+                    '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
+                    '<%(m_graph)sorigen> "%(origen)s"; '
+                    '<%(m_graph)sinserted> "%(insert)s"; ?p ?o.};'
+                )
+                % values
+            )
         else:
-            query_up += (
-                "\nSPARQL INSERT INTO <%(m_graph)s> { "
-                '[] owl:versionInfo "%(d_version)s"; '
-                '<%(m_graph)sendpoint> "%(endpoint)s"; '
-                '<%(m_graph)susuario> "%(user)s"; '
-                '<%(m_graph)sambiente> "%(host)s"; '
-                '<%(m_graph)sproduto> "%(v_graph)s"; '
-                '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
-                '<%(m_graph)sorigen> "%(origen)s"; '
-                '<%(m_graph)schanges> "%(query_up)s".};'
-            ) % values
-            query_down += (
-                "\nSPARQL DELETE FROM <%(m_graph)s> {?s ?p ?o} "
-                'WHERE {?s owl:versionInfo "%(d_version)s"; '
-                '<%(m_graph)sendpoint> "%(endpoint)s"; '
-                '<%(m_graph)susuario> "%(user)s"; '
-                '<%(m_graph)sambiente> "%(host)s"; '
-                '<%(m_graph)sproduto> "%(v_graph)s"; '
-                '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
-                '<%(m_graph)sorigen> "%(origen)s"; '
-                '<%(m_graph)schanges> "%(query_up)s"; ?p ?o.};'
-            ) % values
+            query_up.append(
+                (
+                    "INSERT DATA { GRAPH <%(m_graph)s> { "
+                    '[] owl:versionInfo "%(d_version)s"; '
+                    '<%(m_graph)sendpoint> "%(endpoint)s"; '
+                    '<%(m_graph)susuario> "%(user)s"; '
+                    '<%(m_graph)sambiente> "%(host)s"; '
+                    '<%(m_graph)sproduto> "%(v_graph)s"; '
+                    '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
+                    '<%(m_graph)sorigen> "%(origen)s"; '
+                    '<%(m_graph)schanges> "%(query_up)s".} };'
+                )
+                % values
+            )
+            query_down.append(
+                (
+                    "WITH <%(m_graph)s> DELETE {?s ?p ?o} "
+                    'WHERE {?s owl:versionInfo "%(d_version)s"; '
+                    '<%(m_graph)sendpoint> "%(endpoint)s"; '
+                    '<%(m_graph)susuario> "%(user)s"; '
+                    '<%(m_graph)sambiente> "%(host)s"; '
+                    '<%(m_graph)sproduto> "%(v_graph)s"; '
+                    '<%(m_graph)scommited> "%(date)s"^^xsd:dateTime; '
+                    '<%(m_graph)sorigen> "%(origen)s"; '
+                    '<%(m_graph)schanges> "%(query_up)s"; ?p ?o.};'
+                )
+                % values
+            )
+        query_up = list(filter(None, query_up))
+        query_down = list(filter(None, query_down))
 
         return query_up, query_down
 

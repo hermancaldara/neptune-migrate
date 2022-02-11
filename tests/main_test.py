@@ -25,6 +25,11 @@ class MainTest(BaseTest):
             "migration_graph": "http://example.com",
             "show_sparql_only": None,
             "virtuoso_dirs_allowed": "/tmp",
+            "aws_access_key": "my-fake-access-key",
+            "aws_secret_access_key": "my-fake-secret-access-key",
+            "aws_neptune_url": "asd",
+            "aws_neptune_host": "123123123",
+            "aws_region": "sa-east-1",
         }
 
         create_file("ontology.ttl", "content")
@@ -750,31 +755,6 @@ class MainTest(BaseTest):
                 "YELLOW",
                 log_level_limit=1,
             ),
-        ]
-        self.assertEqual(expected_calls, _execution_log_mock.mock_calls)
-        self.assertEqual(0, main.virtuoso.execute_change.call_count)
-
-    @patch("neptune_migrate.main.Virtuoso")
-    @patch("neptune_migrate.main.Main._execution_log")
-    def test_it_should_do_nothing_if_sparql_up_has_two_lines(
-        self, _execution_log_mock, virtuoso_mock
-    ):
-        main = Main(Config(self.initial_config))
-        main._execute_migrations(
-            "sparql_up line 1\nsparql_up line 2",
-            "sparql_down line 1\nsparql_down line 2",
-            "current_version",
-            "destination_version",
-        )
-        expected_calls = [
-            call("- Current version is: current_version", "GREEN", log_level_limit=1),
-            call(
-                "- Destination version is: destination_version",
-                "GREEN",
-                log_level_limit=1,
-            ),
-            call("\nStarting Migration!", log_level_limit=1),
-            call("\nNothing to do.\n", "PINK", log_level_limit=1),
         ]
         self.assertEqual(expected_calls, _execution_log_mock.mock_calls)
         self.assertEqual(0, main.virtuoso.execute_change.call_count)

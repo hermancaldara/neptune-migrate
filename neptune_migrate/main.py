@@ -235,10 +235,7 @@ class Main(object):
         else:
             self._execution_log("\nStarting Migration!", log_level_limit=1)
 
-        if (
-            len(sparql_up.splitlines()) == 2
-            and self.config.get("load_ttl", None) is None
-        ):
+        if len(sparql_up) == 1 and self.config.get("load_ttl", None) is None:
             self._execution_log("\nNothing to do.\n", "PINK", log_level_limit=1)
             return
 
