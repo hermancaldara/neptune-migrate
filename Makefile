@@ -47,7 +47,7 @@ test: compile
 ## install simple-virtuoso-migrate
 install:
 	python setup.py develop
-	@pip install -r requirements_test.txt
+	pip install -r requirements-local.txt
 	pre-commit install
 
 ## builds without installing simple-virtuoso-migrate
