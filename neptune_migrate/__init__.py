@@ -1,3 +1,1 @@
-from .version import SIMPLE_VIRTUOSO_MIGRATE_VERSION
-
-__all__ = ["cli", "run"]
+__version__ = "0.0.1"

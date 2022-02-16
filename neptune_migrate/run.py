@@ -1,10 +1,11 @@
 import sys
 from getpass import getpass
 
+import neptune_migrate
+
 from .cli import CLI
 from .config import Config, FileConfig
 from .main import Main
-from .version import SIMPLE_VIRTUOSO_MIGRATE_VERSION
 
 
 def run_from_argv(args=sys.argv[1:]):
@@ -18,7 +19,7 @@ def run(options):
     """Initial Module. Treat Parameters and call Main Module for execution"""
     try:
         if options.get("simple_virtuoso_migrate_version"):
-            msg = "simple-virtuoso-migrate v%s" % SIMPLE_VIRTUOSO_MIGRATE_VERSION
+            msg = "simple-virtuoso-migrate v%s" % neptune_migrate.__version__
             CLI.info_and_exit(msg)
 
         if options.get("show_colors"):

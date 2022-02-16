@@ -4,7 +4,7 @@ import neptune_migrate
 
 setup(
     name="neptune-migrate",
-    version=neptune_migrate.SIMPLE_VIRTUOSO_MIGRATE_VERSION,
+    version=neptune_migrate.__version__,
     packages=find_packages(exclude=("tests",)),
     author="Percy Rivera",
     author_email="priverasalas@gmail.com",

@@ -34,9 +34,6 @@ RUN_AFTER = './some_dummy_action.py'
     def tearDown(self):
         delete_files("sample.conf")
 
-    def test_it_should_define_a_version_string(self):
-        self.assertIsInstance(neptune_migrate.SIMPLE_VIRTUOSO_MIGRATE_VERSION, str)
-
     @patch("sys.stdout", new_callable=StringIO)
     @patch("neptune_migrate.cli.CLI.parse")
     def test_it_should_use_cli_to_parse_arguments(self, parse_mock, stdout_mock):
@@ -65,10 +62,7 @@ RUN_AFTER = './some_dummy_action.py'
             run.run_from_argv(["-v"])
         except SystemExit as e:
             self.assertEqual(0, e.code)
-        compiled = (
-            "simple-virtuoso-migrate v%s\n\n"
-            % neptune_migrate.SIMPLE_VIRTUOSO_MIGRATE_VERSION
-        )
+        compiled = "simple-virtuoso-migrate v%s\n\n" % neptune_migrate.__version__
         self.assertEqual(compiled, stdout_mock.getvalue())
 
     @patch("sys.stdout", new_callable=StringIO)
